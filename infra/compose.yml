@@ -1,0 +1,44 @@
+services:
+  redis-node-1:
+   build:
+    context: .
+    dockerfile: Containerfile
+   container_name: redis-node-1
+   hostname: redis-node-1
+  
+  redis-node-2:
+   build:
+    context: .
+    dockerfile: Containerfile
+   container_name: redis-node-2
+   hostname: redis-node-2
+
+  redis-node-3:
+   build:
+    context: .
+    dockerfile: Containerfile
+   container_name: redis-node-3
+   hostname: redis-node-3
+
+  redis-node-4:
+   build:
+    context: .
+    dockerfile: Containerfile
+   container_name: redis-node-4
+   hostname: redis-node-4
+  
+  redis-node-5:
+   build:
+    context: .
+    dockerfile: Containerfile
+   container_name: redis-node-5
+   hostname: redis-node-5
+  
+
+  redis-node-6:
+   build:
+    ontext: . 
+    dockerfile: Containerfile
+   container_name: redis-node-6
+   hostname: redis-node-6
+
