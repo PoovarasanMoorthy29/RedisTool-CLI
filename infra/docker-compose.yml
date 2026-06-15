@@ -2,3 +2,4 @@ services:
  redis-node-1:
   build: .
   container_name: redis-node-1
+  hostname: redis-node-1
