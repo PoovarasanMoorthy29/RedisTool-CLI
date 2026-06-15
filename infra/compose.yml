@@ -1,0 +1,49 @@
+services:
+ redis-node-1:
+  build: .
+  container_name: redis-node-1
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.11
+
+ redis-node-2:
+  build: .
+  container_name: redis-node-2
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.12
+
+ redis-node-3:
+  build: .
+  container_name: redis-node-3
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.13
+  
+ redis-node-4:
+  build: .
+  container_name: redis-node-4
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.14
+    
+ redis-node-5:
+  build: .
+  container_name: redis-node-5
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.15
+    
+ redis-node-6:
+  build: .
+  container_name: redis-node-6
+  networks:
+   redis_net:
+    ipv4_address: 172.20.0.16
+
+networks:
+ redis_net:
+  driver: bridge
+  ipam:
+   config:
+    - subnet: 172.20.0.0/24
