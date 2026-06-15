@@ -1,0 +1,5 @@
+---
+# Handler to restart Redis service
+- name: restart redis
+  shell: "redis-server /etc/redis/redis.conf --daemonize yes"
+  listen: "restart redis"

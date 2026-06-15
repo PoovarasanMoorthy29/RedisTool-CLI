@@ -1,0 +1,2 @@
+{"timestamp": "2026-06-15T17:00:52.313724", "operation": "provision", "level": "INFO", "message": "Starting provision: version=7.0.15, masters=3, replicas=1"}
+{"timestamp": "2026-06-15T17:00:59.741702", "operation": "provision", "level": "ERROR", "message": "Provision playbook failed"}

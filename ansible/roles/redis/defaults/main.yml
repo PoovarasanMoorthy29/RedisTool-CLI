@@ -1,0 +1,9 @@
+---
+# Default variables for Redis role
+redis_version: "7.0.15"
+redis_port: 6379
+redis_bind: "0.0.0.0"
+redis_config_dir: "/etc/redis"
+redis_data_dir: "/data/redis"
+cluster_enabled: "yes"
+cluster_node_timeout: 5000

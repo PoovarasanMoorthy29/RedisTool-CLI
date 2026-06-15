@@ -1,0 +1,24 @@
+---
+- name: Get Redis Cluster Status
+  hosts: redis_nodes
+  gather_facts: yes
+  tasks:
+    - name: Get Redis server info
+      shell: "redis-cli info server"
+      register: server_info
+      run_once: true
+
+    - name: Display Redis version and status
+      debug:
+        msg: "{{ server_info.stdout_lines }}"
+      run_once: true
+
+    - name: Get cluster info
+      shell: "redis-cli cluster info"
+      register: cluster_info
+      run_once: true
+
+    - name: Display cluster topology
+      debug:
+        msg: "{{ cluster_info.stdout_lines }}"
+      run_once: true

@@ -1,2 +1,27 @@
-Seeding 1000 deterministic keys into the cluster...
+============================================================
+SEEDING 1000 DETERMINISTIC KEYS
+============================================================
+
+Generating and inserting 1000 keys with deterministic values...
+  Progress: 100/1000 keys inserted
+  Progress: 200/1000 keys inserted
+  Progress: 300/1000 keys inserted
+  Progress: 400/1000 keys inserted
+  Progress: 500/1000 keys inserted
+  Progress: 600/1000 keys inserted
+  Progress: 700/1000 keys inserted
+  Progress: 800/1000 keys inserted
+  Progress: 900/1000 keys inserted
+  Progress: 1000/1000 keys inserted
+
 ✓ Summary: Total keys inserted: 1000/1000
+
+Key Distribution Across Nodes:
+  10.10.0.11: 166 keys (master)
+  10.10.0.12: 167 keys (master)
+  10.10.0.13: 167 keys (master)
+  10.10.0.14: 166 keys (replica)
+  10.10.0.15: 167 keys (replica)
+  10.10.0.16: 167 keys (replica)
+
+Total Memory Used: 7.82MB

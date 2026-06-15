@@ -3,9 +3,15 @@
   hosts: "{{ target_host }}"
   gather_facts: no
   vars:
-    # Fallback default if not explicitly defined by CLI
     redis_version: "7.2.6"
   tasks:
+    - name: Create backup of current binary
+      copy:
+        src: /usr/local/bin/redis-server
+        dest: /usr/local/bin/redis-server.backup
+        remote_src: yes
+      ignore_errors: yes
+
     - name: Download New Redis Version Source
       get_url:
         url: "https://download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
@@ -22,23 +28,20 @@
         cd /tmp/redis-{{ redis_version }}
         make && make install
       args:
-        creates: "/usr/local/bin/redis-server-{{ redis_version }}"
+        creates: "/tmp/redis-{{ redis_version }}/src/redis-server"
 
-    - name: Copy Binary over to Primary Target Execution Space
-      copy:
-        src: "/usr/local/bin/redis-server"
-        dest: "/usr/local/bin/redis-server-old"
-        remote_src: yes
-        
-    - name: Stop Current Running Server Instance
-      shell: "redis-cli shutdown"
-      ignore_errors: yes
-
-    - name: Start Redis Server with New Binary Compiled Version
-      shell: "redis-server /etc/redis/redis.conf --daemonize yes"
-
-    - name: Wait for Port 6379 to accept connections again
+    - name: Wait for Redis to rejoin cluster
       wait_for:
+        host: "{{ inventory_hostname }}"
         port: 6379
         delay: 2
         timeout: 30
+      retries: 3
+      delay: 2
+
+    - name: Verify cluster state after upgrade
+      shell: "redis-cli cluster info | grep cluster_state"
+      register: cluster_state_after
+      retries: 5
+      until: "'ok' in cluster_state_after.stdout"
+      delay: 2

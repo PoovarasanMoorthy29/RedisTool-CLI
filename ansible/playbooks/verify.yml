@@ -1,0 +1,34 @@
+---
+- name: Verify Redis Cluster Health
+  hosts: redis_nodes
+  gather_facts: yes
+  tasks:
+    - name: Check cluster state
+      shell: "redis-cli cluster info | grep cluster_state"
+      register: cluster_state
+      run_once: true
+
+    - name: Display cluster state
+      debug:
+        msg: "{{ cluster_state.stdout }}"
+      run_once: true
+
+    - name: Get node list
+      shell: "redis-cli cluster nodes"
+      register: nodes_list
+      run_once: true
+
+    - name: Display cluster topology
+      debug:
+        msg: "{{ nodes_list.stdout_lines }}"
+      run_once: true
+
+    - name: Verify all slots are assigned
+      shell: "redis-cli cluster info | grep cluster_slots_assigned"
+      register: slots_assigned
+      run_once: true
+
+    - name: Display slots status
+      debug:
+        msg: "{{ slots_assigned.stdout }}"
+      run_once: true

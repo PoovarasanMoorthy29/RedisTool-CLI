@@ -1,0 +1,14 @@
+---
+- name: Seed Redis Cluster with Test Data
+  hosts: redis-node-1
+  gather_facts: no
+  tasks:
+    - name: Generate test data deterministically
+      debug:
+        msg: "Test data generation is handled by the CLI tool using Python hashlib"
+      run_once: true
+
+    - name: Note about seeding
+      debug:
+        msg: "Run 'redis-tool data seed --keys 1000' from the CLI to seed the cluster"
+      run_once: true

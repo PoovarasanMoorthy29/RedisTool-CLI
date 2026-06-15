@@ -1,0 +1,2 @@
+{"timestamp": "2026-06-15T16:58:37.947458", "operation": "status", "level": "ERROR", "message": "Failed to retrieve metrics: Redis Cluster cannot be connected. Please provide at least one reachable node: Error 113 connecting to 10.10.0.11:6379. No route to host."}
+{"timestamp": "2026-06-15T17:01:18.267494", "operation": "status", "level": "ERROR", "message": "Failed to retrieve metrics: Redis Cluster cannot be connected. Please provide at least one reachable node: Error 113 connecting to 10.10.0.11:6379. No route to host."}
