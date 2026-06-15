@@ -5,7 +5,7 @@ import re
 
 def check_prerequisites():
     print("Checking prerequisites...")
-
+    
     runtime = None
     runtime_version = ""
     
@@ -13,25 +13,35 @@ def check_prerequisites():
         runtime = "podman"
         res = subprocess.run(["podman", "--version"], capture_output=True, text=True)
         runtime_version = res.stdout.strip()
-    elif shutil.which("docker"):
-        runtime = "docker"
-        res = subprocess.run(["docker", "--version"], capture_output=True, text=True)
-        runtime_version = res.stdout.strip()
+    else:
+        docker_exists = False
+        try:
+            res = subprocess.run("docker --version", shell=True, capture_output=True, text=True)
+            if res.returncode == 0:
+                runtime = "docker"
+                runtime_version = res.stdout.strip()
+                docker_exists = True
+        except Exception:
+            pass
+            
+        if not docker_exists and shutil.which("docker"):
+            runtime = "docker"
+            res = subprocess.run(["docker", "--version"], capture_output=True, text=True)
+            runtime_version = res.stdout.strip()
         
     if not runtime:
         print("✗ Container runtime not found (Docker or Podman)")
         print("Install Podman: https://podman.io/docs/installation")
         print("Install Docker: https://docs.docker.com/engine/install/")
         sys.exit(1)
-  
+        
     if not shutil.which("ansible-playbook"):
         print("✗ Ansible not found")
         print("Install: pip install 'ansible>=2.14' (or use your OS package manager)")
         sys.exit(1)
-   
+
     ansible_res = subprocess.run(["ansible-playbook", "--version"], capture_output=True, text=True)
     first_line = ansible_res.stdout.split('\n')[0]
-   
     version_match = re.search(r'core\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line) or re.search(r'ansible-playbook\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line)
     
     if version_match:
@@ -41,7 +51,6 @@ def check_prerequisites():
             print(f"✗ Ansible version {version_str} found, but 2.14+ is required.")
             sys.exit(1)
         ansible_version = f"Ansible {version_str}"
-
     else:
         ansible_version = "Ansible 2.14+ (could not explicitly parse version)"
 
