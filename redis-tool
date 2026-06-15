@@ -1,67 +1,74 @@
+#!/usr/bin/env python3
 import sys
 import shutil
 import subprocess
 import re
+import argparse
+import os
 
 def check_prerequisites():
-    print("Checking prerequisites...")
-    
     runtime = None
-    runtime_version = ""
-    
     if shutil.which("podman"):
         runtime = "podman"
-        res = subprocess.run(["podman", "--version"], capture_output=True, text=True)
-        runtime_version = res.stdout.strip()
     else:
-        docker_exists = False
         try:
             res = subprocess.run("docker --version", shell=True, capture_output=True, text=True)
             if res.returncode == 0:
                 runtime = "docker"
-                runtime_version = res.stdout.strip()
-                docker_exists = True
         except Exception:
             pass
             
-        if not docker_exists and shutil.which("docker"):
-            runtime = "docker"
-            res = subprocess.run(["docker", "--version"], capture_output=True, text=True)
-            runtime_version = res.stdout.strip()
-        
     if not runtime:
         print("✗ Container runtime not found (Docker or Podman)")
-        print("Install Podman: https://podman.io/docs/installation")
-        print("Install Docker: https://docs.docker.com/engine/install/")
         sys.exit(1)
         
     if not shutil.which("ansible-playbook"):
         print("✗ Ansible not found")
-        print("Install: pip install 'ansible>=2.14' (or use your OS package manager)")
         sys.exit(1)
-
-    ansible_res = subprocess.run(["ansible-playbook", "--version"], capture_output=True, text=True)
-    first_line = ansible_res.stdout.split('\n')[0]
-    version_match = re.search(r'core\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line) or re.search(r'ansible-playbook\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line)
-    
-    if version_match:
-        version_str = version_match.group(1)
-        major, minor = map(int, version_str.split('.')[:2])
-        if (major < 2) or (major == 2 and minor < 14):
-            print(f"✗ Ansible version {version_str} found, but 2.14+ is required.")
-            sys.exit(1)
-        ansible_version = f"Ansible {version_str}"
-    else:
-        ansible_version = "Ansible 2.14+ (could not explicitly parse version)"
-
-    print(f"✓ {runtime_version} found")
-    print(f"✓ {ansible_version} found")
-    print("Proceeding...\n")
+        
     return runtime
 
+def run_provision(version):
+    print(f"Starting deployment for Redis version: {version}...")
+    
+    # Run the playbook directly from python using subprocess
+    cmd = [
+        "ansible-playbook", 
+        "ansible/playbooks/provision.yml", 
+        "--extra-vars", f"redis_version={version}"
+    ]
+    
+    # Injecting the ANSIBLE_CONFIG environment variable ensures Ansible loads our local cfg file
+    env = os.environ.copy()
+    env["ANSIBLE_CONFIG"] = "./ansible/ansible.cfg"
+    
+    result = subprocess.run(cmd, env=env)
+    
+    if result.returncode == 0:
+        print("\n=========================================")
+        print("✓ REDIS CLUSTER PROVISIONED SUCCESSFULLY!")
+        print("=========================================")
+    else:
+        print("\n✗ Deployment failed during provisioning tasks.")
+        sys.exit(1)
+
 def main():
-    runtime = check_prerequisites()
-    print("Welcome to redis-tool! Basic setup is complete.")
+    check_prerequisites()
+    
+    parser = argparse.ArgumentParser(description="Redis Cluster Lifecycle Management CLI Tool")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    
+    # Provision command parsing [cite: 30]
+    prov_parser = subparsers.add_parser("provision", help="Provision a clean Redis Cluster")
+    prov_parser.add_argument("version_label", choices=["version"], help="Version specification keyword")
+    prov_parser.add_argument("version_num", help="Exact target version string (e.g., 7.0.15)")
+    prov_parser.add_argument("--masters", type=int, default=3, help="Number of master nodes")
+    prov_parser.add_argument("--replicas-per-master", type=int, default=1, help="Replicas assigned per master")
+
+    args = parser.parse_args()
+    
+    if args.command == "provision":
+        run_provision(args.version_num)
 
 if __name__ == "__main__":
     main()

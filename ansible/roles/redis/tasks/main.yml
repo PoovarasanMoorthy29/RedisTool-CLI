@@ -1,0 +1,41 @@
+---
+- name: Install compilation dependencies
+  apt:
+    name:
+      - build-essential
+      - tcl
+      - wget
+    update_cache: yes
+    state: present
+
+- name: Download Redis source code
+  get_url:
+    url: "download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp/redis-{{ redis_version }}.tar.gz"
+
+- name: Extract Redis source code
+  unarchive:
+    src: "/tmp/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: Compile and install Redis from source
+  shell: |
+    cd /tmp/redis-{{ redis_version }}
+    make && make install
+  args:
+    creates: /usr/local/bin/redis-server
+
+- name: Create Redis configuration directory
+  file:
+    path: /etc/redis
+    state: directory
+    mode: '0755'
+
+- name: Deploy Redis cluster configuration file
+  template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+
+- name: Start Redis server in the background
+  shell: "redis-server /etc/redis/redis.conf --daemonize yes"
