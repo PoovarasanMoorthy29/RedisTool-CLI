@@ -1,0 +1,14 @@
+---
+- name: Install Redis on all nodes
+  hosts: redis_nodes
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Redis
+      apt:
+        name: redis-server
+        state: present
