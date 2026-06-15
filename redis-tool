@@ -1,0 +1,58 @@
+import sys
+import shutil
+import subprocess
+import re
+
+def check_prerequisites():
+    print("Checking prerequisites...")
+
+    runtime = None
+    runtime_version = ""
+    
+    if shutil.which("podman"):
+        runtime = "podman"
+        res = subprocess.run(["podman", "--version"], capture_output=True, text=True)
+        runtime_version = res.stdout.strip()
+    elif shutil.which("docker"):
+        runtime = "docker"
+        res = subprocess.run(["docker", "--version"], capture_output=True, text=True)
+        runtime_version = res.stdout.strip()
+        
+    if not runtime:
+        print("✗ Container runtime not found (Docker or Podman)")
+        print("Install Podman: https://podman.io/docs/installation")
+        print("Install Docker: https://docs.docker.com/engine/install/")
+        sys.exit(1)
+  
+    if not shutil.which("ansible-playbook"):
+        print("✗ Ansible not found")
+        print("Install: pip install 'ansible>=2.14' (or use your OS package manager)")
+        sys.exit(1)
+   
+    ansible_res = subprocess.run(["ansible-playbook", "--version"], capture_output=True, text=True)
+    first_line = ansible_res.stdout.split('\n')[0]
+   
+    version_match = re.search(r'core\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line) or re.search(r'ansible-playbook\s+([0-9]+\.[0-9]+\.[0-9]+)', first_line)
+    
+    if version_match:
+        version_str = version_match.group(1)
+        major, minor = map(int, version_str.split('.')[:2])
+        if (major < 2) or (major == 2 and minor < 14):
+            print(f"✗ Ansible version {version_str} found, but 2.14+ is required.")
+            sys.exit(1)
+        ansible_version = f"Ansible {version_str}"
+
+    else:
+        ansible_version = "Ansible 2.14+ (could not explicitly parse version)"
+
+    print(f"✓ {runtime_version} found")
+    print(f"✓ {ansible_version} found")
+    print("Proceeding...\n")
+    return runtime
+
+def main():
+    runtime = check_prerequisites()
+    print("Welcome to redis-tool! Basic setup is complete.")
+
+if __name__ == "__main__":
+    main()
