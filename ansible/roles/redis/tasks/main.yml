@@ -10,7 +10,7 @@
 
 - name: Download Redis source code
   get_url:
-    url: "download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
+    url: "https://download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
     dest: "/tmp/redis-{{ redis_version }}.tar.gz"
 
 - name: Extract Redis source code

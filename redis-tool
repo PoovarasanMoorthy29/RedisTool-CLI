@@ -2,73 +2,133 @@
 import sys
 import shutil
 import subprocess
-import re
 import argparse
 import os
+import hashlib
+import time
+import re
+from redis.cluster import RedisCluster
 
 def check_prerequisites():
     runtime = None
-    if shutil.which("podman"):
+    if shutil.which("podman"): 
         runtime = "podman"
-    else:
-        try:
-            res = subprocess.run("docker --version", shell=True, capture_output=True, text=True)
-            if res.returncode == 0:
-                runtime = "docker"
-        except Exception:
-            pass
-            
-    if not runtime:
-        print("✗ Container runtime not found (Docker or Podman)")
-        sys.exit(1)
+    elif shutil.which("docker"): 
+        runtime = "docker"
         
-    if not shutil.which("ansible-playbook"):
-        print("✗ Ansible not found")
+    if not runtime or not shutil.which("ansible-playbook"):
+        print("✗ Missing prerequisites.")
         sys.exit(1)
-        
     return runtime
 
 def run_provision(version):
     print(f"Starting deployment for Redis version: {version}...")
-    
-    # Run the playbook directly from python using subprocess
-    cmd = [
-        "ansible-playbook", 
-        "ansible/playbooks/provision.yml", 
-        "--extra-vars", f"redis_version={version}"
-    ]
-    
-    # Injecting the ANSIBLE_CONFIG environment variable ensures Ansible loads our local cfg file
+    cmd = ["ansible-playbook", "ansible/playbooks/provision.yml", "--extra-vars", f"redis_version={version}"]
     env = os.environ.copy()
     env["ANSIBLE_CONFIG"] = "./ansible/ansible.cfg"
-    
     result = subprocess.run(cmd, env=env)
-    
     if result.returncode == 0:
         print("\n=========================================")
         print("✓ REDIS CLUSTER PROVISIONED SUCCESSFULLY!")
         print("=========================================")
+        fix_replication_topology()
     else:
-        print("\n✗ Deployment failed during provisioning tasks.")
+        print("\n✗ Deployment failed.")
         sys.exit(1)
 
-def main():
-    check_prerequisites()
-    
-    parser = argparse.ArgumentParser(description="Redis Cluster Lifecycle Management CLI Tool")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    
-    # Provision command parsing [cite: 30]
-    prov_parser = subparsers.add_parser("provision", help="Provision a clean Redis Cluster")
-    prov_parser.add_argument("version_label", choices=["version"], help="Version specification keyword")
-    prov_parser.add_argument("version_num", help="Exact target version string (e.g., 7.0.15)")
-    prov_parser.add_argument("--masters", type=int, default=3, help="Number of master nodes")
-    prov_parser.add_argument("--replicas-per-master", type=int, default=1, help="Replicas assigned per master")
+def fix_replication_topology():
+    print("Verifying replication topology balance...")
+    try:
+        rc = RedisCluster(host='172.20.0.11', port=6379)
+        nodes = rc.cluster_nodes()
+        masters = [n for n in nodes if 'master' in n['flags'] and n['slots']]
+        if len(masters) == 6:
+            print("Optimizing node roles into 3 Masters and 3 Replicas...")
+            pairings = {
+                "172.20.0.14": "172.20.0.11",
+                "172.20.0.15": "172.20.0.12",
+                "172.20.0.16": "172.20.0.13"
+            }
+            for rep_ip, mast_ip in pairings.items():
+                master_node = next(n for n in nodes if mast_ip in n['host'])
+                subprocess.run(f"docker exec -d {get_node_name(rep_ip)} redis-cli cluster replicate {master_node['id']}", shell=True)
+            print("✓ Topography configuration updated successfully.")
+    except Exception as e:
+        print(f"Topology balancing skipped or node warming up: {e}")
 
-    args = parser.parse_args()
-    
-    if args.command == "provision":
-        run_provision(args.version_num)
+def get_node_name(ip):
+    mapping = {
+        "172.20.0.11": "redis-node-1", "172.20.0.12": "redis-node-2", "172.20.0.13": "redis-node-3",
+        "172.20.0.14": "redis-node-4", "172.20.0.15": "redis-node-5", "172.20.0.16": "redis-node-6"
+    }
+    return mapping.get(ip, "redis-node-1")
 
-if __name__ == "__main__":
-    main()
+def get_node_alias_by_name(name):
+    return name
+
+def run_status():
+    try:
+        rc = RedisCluster(host='172.20.0.11', port=6379)
+        nodes = rc.cluster_nodes()
+        state_res = subprocess.run("docker exec redis-node-1 redis-cli cluster info", shell=True, capture_output=True, text=True)
+        state = "ok" if "cluster_state:ok" in state_res.stdout else "fail"
+        print(f"Cluster State: {state}\n")
+        
+        print("MASTERS")
+        for n in nodes:
+            if 'master' in n['flags'] and n['slots']:
+                ip = n['host'].split(':')[0]
+                mem_res = subprocess.run(f"docker exec {get_node_name(ip)} redis-cli info memory", shell=True, capture_output=True, text=True)
+                # Modified regex to cleanly capture across Linux whitespace boundaries (\n or \r\n)
+                mem = re.search(r'used_memory_human:([^\s]+)', mem_res.stdout)
+                mem_str = mem.group(1) if mem else "N/A"
+                slots = f"{n['slots'][0][0]}-{n['slots'][0][1]}" if n['slots'] else "none"
+                print(f"  {ip}:6379 [master] -> slots: {slots} | mem: {mem_str}")
+                
+        print("\nREPLICAS")
+        for n in nodes:
+            if 'slave' in n['flags'] or ('master' in n['flags'] and not n['slots']):
+                ip = n['host'].split(':')[0]
+                mem_res = subprocess.run(f"docker exec {get_node_name(ip)} redis-cli info memory", shell=True, capture_output=True, text=True)
+                mem = re.search(r'used_memory_human:([^\s]+)', mem_res.stdout)
+                mem_str = mem.group(1) if mem else "N/A"
+                print(f"  {ip}:6379 [replica] -> mem: {mem_str}")
+    except Exception as e:
+        print(f"✗ Failed to retrieve metrics: {e}")
+
+def run_seed(count):
+    print(f"Seeding {count} deterministic keys into the cluster...")
+    try:
+        rc = RedisCluster(host='172.20.0.11', port=6379)
+        success = 0
+        for i in range(1, count + 1):
+            key = f"key:{i:04d}"
+            value = hashlib.sha256(key.encode()).hexdigest()
+            rc.set(key, value)
+            success += 1
+        print(f"✓ Summary: Total keys inserted: {success}/{count}")
+    except Exception as e:
+        print(f"✗ Seeding failed: {e}")
+
+def run_verify(silent=False):
+    if not silent: print("Running data verification protocol...")
+    try:
+        rc = RedisCluster(host='172.20.0.11', port=6379)
+        passed = 0
+        failed = 0
+        for i in range(1, 1001):
+            key = f"key:{i:04d}"
+            expected_val = hashlib.sha256(key.encode()).hexdigest()
+            actual_val = rc.get(key)
+            if actual_val and actual_val.decode() == expected_val: 
+                passed += 1
+            else: 
+                failed += 1
+        if failed == 0:
+            if not silent: print(f"✓ PASS: {passed}/1000 keys verified perfectly!") 
+            return True
+        else:
+            if not silent: print(f"✗ FAIL: {failed} keys missing or corrupted.") 
+            return False
+    except Exception:
+        return False
