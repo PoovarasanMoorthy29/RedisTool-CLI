@@ -24,9 +24,6 @@ import sys
 import time
 from datetime import datetime
 
-# ═══════════════════════════════════════════════════════════════════
-# CONSTANTS & PATHS
-# ═══════════════════════════════════════════════════════════════════
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 ANSIBLE_DIR = os.path.join(PROJECT_ROOT, "ansible")
@@ -57,10 +54,6 @@ IP_TO_NAME = {v: k for k, v in NODES.items()}
 
 for d in (OUTPUT_DIR, LOG_DIR):
     os.makedirs(d, exist_ok=True)
-
-# ═══════════════════════════════════════════════════════════════════
-# LOGGING
-# ═══════════════════════════════════════════════════════════════════
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
@@ -111,12 +104,6 @@ def abort(msg):
     log_fail(msg)
     sys.exit(1)
 
-
-# ═══════════════════════════════════════════════════════════════════
-# SHELL & SSH HELPERS
-# ═══════════════════════════════════════════════════════════════════
-
-
 def run(cmd, cwd=None, check=True, capture=True):
     """Run a shell command, return CompletedProcess."""
     result = subprocess.run(
@@ -162,11 +149,6 @@ def redis_cli(ip, redis_cmd, port=6379):
         return ""
     lines = [line for line in out.splitlines() if not line.startswith("Warning:")]
     return "\n".join(lines).strip()
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PREREQUISITE DETECTION
-# ═══════════════════════════════════════════════════════════════════
 
 CONTAINER_ENGINE = ""
 COMPOSE_CMD = ""
@@ -218,12 +200,6 @@ def preflight():
     detect_ansible()
     print()
 
-
-# ═══════════════════════════════════════════════════════════════════
-# SSH KEYS & INFRASTRUCTURE
-# ═══════════════════════════════════════════════════════════════════
-
-
 def ensure_ssh_keys():
     if not os.path.exists(SSH_KEY):
         log_step("Generating SSH keypair for Ansible...")
@@ -266,11 +242,6 @@ def infra_down():
     log_ok("Infrastructure destroyed")
 
 
-# ═══════════════════════════════════════════════════════════════════
-# ANSIBLE RUNNER
-# ═══════════════════════════════════════════════════════════════════
-
-
 def run_playbook(playbook, extra_vars=None, live=True):
     """Run an Ansible playbook. Returns CompletedProcess if live=False."""
     cmd = (
@@ -286,11 +257,6 @@ def run_playbook(playbook, extra_vars=None, live=True):
         return run_live(cmd, check=True)
     else:
         return run(cmd, check=False)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# CLUSTER HELPERS
-# ═══════════════════════════════════════════════════════════════════
 
 
 def wait_cluster_ok(context="", retries=60, delay=3):
@@ -325,11 +291,6 @@ def get_cluster_nodes():
     return nodes
 
 
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: provision
-# ═══════════════════════════════════════════════════════════════════
-
-
 def cmd_provision(args):
     version = args.version
     masters = args.masters
@@ -348,20 +309,11 @@ def cmd_provision(args):
     log_ok("Provision complete!")
 
 
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: status
-# ═══════════════════════════════════════════════════════════════════
-
 
 def cmd_status(_args):
     header("Redis Cluster Status")
     preflight()
     run_playbook("status.yml")
-
-
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: data seed / data verify
-# ═══════════════════════════════════════════════════════════════════
 
 
 def cmd_data_seed(args):
@@ -375,18 +327,11 @@ def cmd_data_verify(args):
     preflight()
     run_playbook("verify.yml", extra_vars={"num_keys": str(args.keys)})
 
-
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: upgrade (rolling, zero-downtime)
-# ═══════════════════════════════════════════════════════════════════
-
-
 def cmd_upgrade(args):
     target = args.target_version
     header(f"Rolling Upgrade to Redis {target}")
     preflight()
 
-    # Step 1 — Pre-flight
     log_step("Step 1/5: Pre-flight health checks...")
     if "cluster_state:ok" not in redis_cli(ALL_IPS[0], "cluster info"):
         abort("Cluster not healthy — aborting")
@@ -401,7 +346,6 @@ def cmd_upgrade(args):
     run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
     log_ok("Baseline data: intact")
 
-    # Step 2 — Discover topology
     log_step("Step 2/5: Discovering cluster topology...")
     nodes = get_cluster_nodes()
     replicas = [n for n in nodes if n["role"] == "slave"]
@@ -409,7 +353,6 @@ def cmd_upgrade(args):
     log_info(f"Masters:  {', '.join(n['name'] for n in masters)}")
     log_info(f"Replicas: {', '.join(n['name'] for n in replicas)}")
 
-    # Step 3 — Upgrade replicas
     log_step("Step 3/5: Upgrading replicas...")
     for rep in replicas:
         log_step(f"Upgrading replica {rep['name']} ({rep['ip']})...")
@@ -419,7 +362,7 @@ def cmd_upgrade(args):
         wait_cluster_ok(f"after upgrading {rep['name']}")
         log_ok(f"Replica {rep['name']} upgraded")
 
-    # Step 4 — Upgrade masters with failover
+
     log_step("Step 4/5: Upgrading masters with failover...")
     nodes = get_cluster_nodes()  # re-discover after replica upgrades
     masters = [n for n in nodes if n["role"] == "master"]
@@ -454,7 +397,6 @@ def cmd_upgrade(args):
         wait_cluster_ok(f"after upgrading {mname}")
         log_ok(f"Master {mname} upgraded")
 
-    # Step 5 — Post-upgrade verification
     log_step("Step 5/5: Post-upgrade verification...")
     run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
     run_playbook("status.yml")
@@ -465,21 +407,16 @@ def cmd_upgrade(args):
     log_ok("Zero-downtime rolling upgrade successful!")
 
 
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: verify --full
-# ═══════════════════════════════════════════════════════════════════
-
-
 def cmd_verify(args):
     header("Full Cluster Verification")
     preflight()
 
-    # 1 — Data integrity
+
     log_step("1. Data integrity check...")
     run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
     log_ok("Data integrity: PASS")
 
-    # 2 — Version consistency
+
     log_step("2. Version consistency...")
     versions = []
     for ip in ALL_IPS:
@@ -494,19 +431,16 @@ def cmd_verify(args):
     else:
         log_fail(f"Version consistency: FAIL (mixed: {unique})")
 
-    # 3 — Cluster state
     log_step("3. Cluster state...")
     info = redis_cli(ALL_IPS[0], "cluster info")
     log_ok("Cluster state: OK") if "cluster_state:ok" in info else log_fail("NOT OK")
 
-    # 4 — Slot coverage
     log_step("4. Slot coverage...")
     for line in info.splitlines():
         if "cluster_slots_ok" in line:
             slots = line.split(":")[1].strip()
             (log_ok if slots == "16384" else log_fail)(f"Slot coverage: {slots}/16384")
 
-    # 5 — Replication lag (--full)
     if args.full:
         log_step("5. Replication lag...")
         for ip in ALL_IPS:
@@ -516,11 +450,6 @@ def cmd_verify(args):
                 log_info(f"  {ip} (replica): {'; '.join(offsets)}")
 
     header("Verification Complete")
-
-
-# ═══════════════════════════════════════════════════════════════════
-# COMMAND: infra up/down
-# ═══════════════════════════════════════════════════════════════════
 
 
 def cmd_infra_up(_args):
@@ -533,16 +462,11 @@ def cmd_infra_down(_args):
     infra_down()
 
 
-# ═══════════════════════════════════════════════════════════════════
-# MAIN — ARGPARSE DISPATCHER
-# ═══════════════════════════════════════════════════════════════════
-
 BANNER = """
   ╔══════════════════════════════════════════════════════╗
   ║          redis-tool · Cluster Lifecycle CLI          ║
   ╚══════════════════════════════════════════════════════╝
 """
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -553,18 +477,15 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
-    # provision
     p = sub.add_parser("provision", help="Provision a Redis Cluster")
     p.add_argument("--version", default="7.0.15")
     p.add_argument("--masters", type=int, default=3)
     p.add_argument("--replicas-per-master", type=int, default=1)
     p.set_defaults(func=cmd_provision)
 
-    # status
     p = sub.add_parser("status", help="Show cluster status")
     p.set_defaults(func=cmd_status)
 
-    # data
     p_data = sub.add_parser("data", help="Seed or verify data")
     ds = p_data.add_subparsers(dest="data_cmd")
     p = ds.add_parser("seed", help="Seed test data")
@@ -574,18 +495,15 @@ def main():
     p.add_argument("--keys", type=int, default=1000)
     p.set_defaults(func=cmd_data_verify)
 
-    # upgrade
     p = sub.add_parser("upgrade", help="Rolling upgrade")
     p.add_argument("--target-version", required=True)
     p.add_argument("--strategy", default="rolling", choices=["rolling"])
     p.set_defaults(func=cmd_upgrade)
 
-    # verify
     p = sub.add_parser("verify", help="Full cluster verification")
     p.add_argument("--full", action="store_true")
     p.set_defaults(func=cmd_verify)
 
-    # infra
     p_infra = sub.add_parser("infra", help="Manage containers")
     isub = p_infra.add_subparsers(dest="infra_cmd")
     p = isub.add_parser("up", help="Bring up containers")
