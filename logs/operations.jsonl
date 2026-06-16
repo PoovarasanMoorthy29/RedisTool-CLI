@@ -691,3 +691,12 @@
 {"timestamp": "2026-06-16T15:52:41.065167Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-5", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:52:41.065469Z", "command": "upgrade", "action": "Replica redis-node-5 upgraded", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:52:41.065690Z", "command": "upgrade", "action": "Upgrading replica redis-node-4 (10.10.0.14)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:55:09.260338Z", "command": "upgrade", "action": "Waiting for replica 10.10.0.14 to synchronize (master_link_status:up)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:55:09.615244Z", "command": "upgrade", "action": "Replica 10.10.0.14 is fully synchronized.", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:55:09.982502Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-4", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:55:09.982920Z", "command": "upgrade", "action": "Replica redis-node-4 upgraded", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:55:09.983113Z", "command": "upgrade", "action": "Step 4/5: Upgrading masters with failover...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:55:10.375166Z", "command": "upgrade", "action": "Failing over redis-node-2 \u2192 promoting redis-node-6...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:55:11.068554Z", "command": "upgrade", "action": "Failover done: redis-node-6 is master", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:55:11.422558Z", "command": "upgrade", "action": "Cluster healthy after failover of redis-node-2", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:55:11.423061Z", "command": "upgrade", "action": "Upgrading old master redis-node-2 (now replica)...", "outcome": "started", "details": {}}
