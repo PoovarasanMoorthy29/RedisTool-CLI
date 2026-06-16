@@ -686,3 +686,8 @@
 {"timestamp": "2026-06-16T15:50:19.589879Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-6", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:50:19.590302Z", "command": "upgrade", "action": "Replica redis-node-6 upgraded", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:50:19.590597Z", "command": "upgrade", "action": "Upgrading replica redis-node-5 (10.10.0.15)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:52:40.368181Z", "command": "upgrade", "action": "Waiting for replica 10.10.0.15 to synchronize (master_link_status:up)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:52:40.718061Z", "command": "upgrade", "action": "Replica 10.10.0.15 is fully synchronized.", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:52:41.065167Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-5", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:52:41.065469Z", "command": "upgrade", "action": "Replica redis-node-5 upgraded", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:52:41.065690Z", "command": "upgrade", "action": "Upgrading replica redis-node-4 (10.10.0.14)...", "outcome": "started", "details": {}}
