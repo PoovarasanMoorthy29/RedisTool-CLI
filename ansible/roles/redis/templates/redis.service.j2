@@ -1,0 +1,65 @@
+#!/bin/bash
+# Redis init script - Managed by Ansible
+# Provides: redis-server
+# Description: Redis data structure server
+
+REDIS_SERVER={{ redis_install_dir }}/bin/redis-server
+REDIS_CLI={{ redis_install_dir }}/bin/redis-cli
+REDIS_CONF=/etc/redis/redis.conf
+REDIS_PID={{ redis_pid_file }}
+REDIS_PORT={{ redis_port }}
+REDIS_USER={{ redis_user }}
+
+case "$1" in
+    start)
+        echo "Starting Redis server..."
+        if [ -f "$REDIS_PID" ] && kill -0 $(cat "$REDIS_PID") 2>/dev/null; then
+            echo "Redis is already running (PID: $(cat $REDIS_PID))"
+            exit 0
+        fi
+        su -s /bin/bash -c "$REDIS_SERVER $REDIS_CONF" $REDIS_USER
+        sleep 1
+        if [ -f "$REDIS_PID" ] && kill -0 $(cat "$REDIS_PID") 2>/dev/null; then
+            echo "Redis started successfully (PID: $(cat $REDIS_PID))"
+        else
+            echo "Failed to start Redis"
+            exit 1
+        fi
+        ;;
+    stop)
+        echo "Stopping Redis server..."
+        if [ -f "$REDIS_PID" ]; then
+            $REDIS_CLI -h 127.0.0.1 -p $REDIS_PORT shutdown save 2>/dev/null || true
+            sleep 2
+            if [ -f "$REDIS_PID" ] && kill -0 $(cat "$REDIS_PID") 2>/dev/null; then
+                kill $(cat "$REDIS_PID") 2>/dev/null || true
+                sleep 1
+            fi
+            rm -f "$REDIS_PID"
+            echo "Redis stopped"
+        else
+            pkill -f "redis-server.*:$REDIS_PORT" 2>/dev/null || true
+            echo "Redis stopped (no PID file found)"
+        fi
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    status)
+        if [ -f "$REDIS_PID" ] && kill -0 $(cat "$REDIS_PID") 2>/dev/null; then
+            echo "Redis is running (PID: $(cat $REDIS_PID))"
+            $REDIS_CLI -h 127.0.0.1 -p $REDIS_PORT ping 2>/dev/null || echo "Redis not responding"
+        else
+            echo "Redis is not running"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

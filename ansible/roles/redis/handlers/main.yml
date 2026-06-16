@@ -1,0 +1,10 @@
+---
+# Redis Role Handlers
+
+- name: restart redis
+  shell: /etc/init.d/redis-server restart
+  listen: "restart redis"
+
+- name: stop redis
+  shell: /etc/init.d/redis-server stop || true
+  listen: "stop redis"

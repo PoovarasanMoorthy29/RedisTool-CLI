@@ -1,0 +1,25 @@
+# Redis Role Defaults
+redis_version: "7.0.15"
+redis_port: 6379
+redis_bind_address: "0.0.0.0"
+redis_cluster_enabled: "yes"
+redis_cluster_config_file: "nodes.conf"
+redis_cluster_node_timeout: 5000
+redis_appendonly: "yes"
+redis_appendfsync: "everysec"
+redis_dir: "/var/lib/redis"
+redis_log_dir: "/var/log/redis"
+redis_log_file: "/var/log/redis/redis-server.log"
+redis_pid_file: "/var/run/redis/redis-server.pid"
+redis_daemonize: "yes"
+redis_maxmemory: "256mb"
+redis_maxmemory_policy: "noeviction"
+redis_cluster_bus_port: 16379
+
+# Installation
+redis_install_dir: "/opt/redis"
+redis_user: "redis"
+redis_group: "redis"
+
+# Cluster formation
+redis_cluster_replicas: 1

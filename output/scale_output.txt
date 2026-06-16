@@ -1,0 +1,368 @@
+
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+[1m[0;34m  Preflight Checks[0m
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+
+[0;32m[✔][0m    Container engine: podman (podman-compose)
+[0;32m[✔][0m    Ansible: 2.16
+
+[0;36m[STEP][0m  13:18:02 Dynamically generating config definitions for redis-node-7 and redis-node-8...
+[0;36m[STEP][0m  13:18:02 Building and starting containers: redis-node-7, redis-node-8...
+podman-compose version: 1.0.6
+['podman', '--version', '']
+using podman version: 4.9.3
+** excluding:  {'redis-node-5', 'redis-node-4', 'redis-node-1', 'redis-node-6', 'redis-node-2', 'redis-node-3'}
+podman build -f ./Dockerfile -t infra_redis-node-7 .
+STEP 1/12: FROM ubuntu:22.04
+STEP 2/12: ENV DEBIAN_FRONTEND=noninteractive
+--> Using cache 80cd98a1a844ac2f52e14189d825175a035aac0fa04e13dd56222687d9c60722
+--> 80cd98a1a844
+STEP 3/12: RUN apt-get update &&     apt-get install -y --no-install-recommends         openssh-server         sudo         curl         wget         gnupg2         lsb-release         ca-certificates         iproute2         net-tools         iputils-ping         procps         python3         python3-apt         apt-transport-https         software-properties-common         build-essential         tcl         pkg-config         libssl-dev         tar &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+--> Using cache a523a1902aabcad67ec39d491be1720e147d31624e1ed88698e7a83c13dd7e35
+--> a523a1902aab
+STEP 4/12: RUN mkdir -p /var/run/sshd &&     sed -i 's/#PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config &&     sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config &&     sed -i 's/#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config &&     sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config &&     echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config &&     echo "UserKnownHostsFile /dev/null" >> /etc/ssh/ssh_config
+--> Using cache c1018fcbf2de7018e405842e26bcb8864f4073798abf74d97e0fccadcdc11c25
+--> c1018fcbf2de
+STEP 5/12: RUN useradd -m -s /bin/bash ansible &&     echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible &&     chmod 440 /etc/sudoers.d/ansible
+--> Using cache 5a4c56e0397ec0861367c3de1d7917da3c456b146fdf16692349ec84c8e6ef14
+--> 5a4c56e0397e
+STEP 6/12: RUN mkdir -p /home/ansible/.ssh &&     chmod 700 /home/ansible/.ssh &&     chown -R ansible:ansible /home/ansible/.ssh
+--> Using cache bff4da7ec6ed19c16399d3462be6016c8fbe9b9ece10fdb746f8a025560a3e2d
+--> bff4da7ec6ed
+STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
+--> Using cache 46b53528cae4d17fa570c7299c1180e5047c5d47e8639fcdb4e5e12cf617b3cf
+--> 46b53528cae4
+STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
+--> Using cache cf874ca877356c97a9a0cc4fbd14c334cc16e072b5936373c592e57d3baede1d
+--> cf874ca87735
+STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
+--> Using cache 41af5420dc681cf47da5eb6286327fa98b24bed461293a66e6f3584951209bad
+--> 41af5420dc68
+STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
+--> Using cache 5a5668b5c05fb89c2e45a5f0d50f8e80152d8754acf09458e026320063ef02a0
+--> 5a5668b5c05f
+STEP 11/12: EXPOSE 22
+--> Using cache 3e6db54f7189ac50c96c49e4b6ae09e78bb4bd5695b5f7a1a8a73c639a50dc73
+--> 3e6db54f7189
+STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
+--> Using cache 6d511ffac918535b38191a230a4c11d8e8037f2d9f2cfeea5e972620e5be8b71
+COMMIT infra_redis-node-7
+--> 6d511ffac918
+Successfully tagged localhost/infra_redis-node-7:latest
+Successfully tagged localhost/infra_redis-node-10:latest
+Successfully tagged localhost/infra_redis-node-9:latest
+Successfully tagged localhost/infra_redis-node-8:latest
+Successfully tagged localhost/infra_redis-node-6:latest
+Successfully tagged localhost/infra_redis-node-5:latest
+Successfully tagged localhost/infra_redis-node-4:latest
+Successfully tagged localhost/infra_redis-node-3:latest
+Successfully tagged localhost/infra_redis-node-2:latest
+Successfully tagged localhost/infra_redis-node-1:latest
+6d511ffac918535b38191a230a4c11d8e8037f2d9f2cfeea5e972620e5be8b71
+exit code: 0
+podman build -f ./Dockerfile -t infra_redis-node-8 .
+STEP 1/12: FROM ubuntu:22.04
+STEP 2/12: ENV DEBIAN_FRONTEND=noninteractive
+--> Using cache 80cd98a1a844ac2f52e14189d825175a035aac0fa04e13dd56222687d9c60722
+--> 80cd98a1a844
+STEP 3/12: RUN apt-get update &&     apt-get install -y --no-install-recommends         openssh-server         sudo         curl         wget         gnupg2         lsb-release         ca-certificates         iproute2         net-tools         iputils-ping         procps         python3         python3-apt         apt-transport-https         software-properties-common         build-essential         tcl         pkg-config         libssl-dev         tar &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+--> Using cache a523a1902aabcad67ec39d491be1720e147d31624e1ed88698e7a83c13dd7e35
+--> a523a1902aab
+STEP 4/12: RUN mkdir -p /var/run/sshd &&     sed -i 's/#PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config &&     sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config &&     sed -i 's/#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config &&     sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config &&     echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config &&     echo "UserKnownHostsFile /dev/null" >> /etc/ssh/ssh_config
+--> Using cache c1018fcbf2de7018e405842e26bcb8864f4073798abf74d97e0fccadcdc11c25
+--> c1018fcbf2de
+STEP 5/12: RUN useradd -m -s /bin/bash ansible &&     echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible &&     chmod 440 /etc/sudoers.d/ansible
+--> Using cache 5a4c56e0397ec0861367c3de1d7917da3c456b146fdf16692349ec84c8e6ef14
+--> 5a4c56e0397e
+STEP 6/12: RUN mkdir -p /home/ansible/.ssh &&     chmod 700 /home/ansible/.ssh &&     chown -R ansible:ansible /home/ansible/.ssh
+--> Using cache bff4da7ec6ed19c16399d3462be6016c8fbe9b9ece10fdb746f8a025560a3e2d
+--> bff4da7ec6ed
+STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
+--> Using cache 46b53528cae4d17fa570c7299c1180e5047c5d47e8639fcdb4e5e12cf617b3cf
+--> 46b53528cae4
+STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
+--> Using cache cf874ca877356c97a9a0cc4fbd14c334cc16e072b5936373c592e57d3baede1d
+--> cf874ca87735
+STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
+--> Using cache 41af5420dc681cf47da5eb6286327fa98b24bed461293a66e6f3584951209bad
+--> 41af5420dc68
+STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
+--> Using cache 5a5668b5c05fb89c2e45a5f0d50f8e80152d8754acf09458e026320063ef02a0
+--> 5a5668b5c05f
+STEP 11/12: EXPOSE 22
+--> Using cache 3e6db54f7189ac50c96c49e4b6ae09e78bb4bd5695b5f7a1a8a73c639a50dc73
+--> 3e6db54f7189
+STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
+--> Using cache 6d511ffac918535b38191a230a4c11d8e8037f2d9f2cfeea5e972620e5be8b71
+COMMIT infra_redis-node-8
+--> 6d511ffac918
+Successfully tagged localhost/infra_redis-node-8:latest
+Successfully tagged localhost/infra_redis-node-7:latest
+Successfully tagged localhost/infra_redis-node-10:latest
+Successfully tagged localhost/infra_redis-node-9:latest
+Successfully tagged localhost/infra_redis-node-6:latest
+Successfully tagged localhost/infra_redis-node-5:latest
+Successfully tagged localhost/infra_redis-node-4:latest
+Successfully tagged localhost/infra_redis-node-3:latest
+Successfully tagged localhost/infra_redis-node-2:latest
+Successfully tagged localhost/infra_redis-node-1:latest
+6d511ffac918535b38191a230a4c11d8e8037f2d9f2cfeea5e972620e5be8b71
+exit code: 0
+['podman', 'ps', '--filter', 'label=io.podman.compose.project=infra', '-a', '--format', '{{ index .Labels "io.podman.compose.config-hash"}}']
+recreating: ...
+** excluding:  {'redis-node-5', 'redis-node-4', 'redis-node-1', 'redis-node-6', 'redis-node-2', 'redis-node-3'}
+podman stop -t 10 redis-node-8
+Error: no container with name or ID "redis-node-8" found: no such container
+exit code: 125
+podman stop -t 10 redis-node-7
+Error: no container with name or ID "redis-node-7" found: no such container
+exit code: 125
+podman rm redis-node-8
+Error: no container with ID or name "redis-node-8" found: no such container
+exit code: 1
+podman rm redis-node-7
+Error: no container with ID or name "redis-node-7" found: no such container
+exit code: 1
+recreating: done
+
+
+** skipping:  redis-node-1
+** skipping:  redis-node-2
+** skipping:  redis-node-3
+** skipping:  redis-node-4
+** skipping:  redis-node-5
+** skipping:  redis-node-6
+podman volume inspect infra_redis-data-7 || podman volume create infra_redis-data-7
+['podman', 'volume', 'inspect', 'infra_redis-data-7']
+Error: no such volume infra_redis-data-7
+['podman', 'volume', 'create', '--label', 'io.podman.compose.project=infra', '--label', 'com.docker.compose.project=infra', 'infra_redis-data-7']
+['podman', 'volume', 'inspect', 'infra_redis-data-7']
+['podman', 'network', 'exists', 'infra_redis-cluster-net']
+podman run --name=redis-node-7 -d --label io.podman.compose.config-hash=047dfb1c96311e310c692d09ddd31fb338e48a61022f393a44140e156d8b124e --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-7 --cap-add SYS_PTRACE -v infra_redis-data-7:/data --net infra_redis-cluster-net --network-alias redis-node-7 --ip=10.10.10.17 -p 2217:22 -p 7007:6379 -p 17007:16379 --hostname redis-node-7 --privileged --restart unless-stopped infra_redis-node-7
+04498b7324731c1a9e534ac17f3015e387c933510c110d03f9110e3ac020a5fe
+exit code: 0
+podman volume inspect infra_redis-data-8 || podman volume create infra_redis-data-8
+['podman', 'volume', 'inspect', 'infra_redis-data-8']
+Error: no such volume infra_redis-data-8
+['podman', 'volume', 'create', '--label', 'io.podman.compose.project=infra', '--label', 'com.docker.compose.project=infra', 'infra_redis-data-8']
+['podman', 'volume', 'inspect', 'infra_redis-data-8']
+['podman', 'network', 'exists', 'infra_redis-cluster-net']
+podman run --name=redis-node-8 -d --label io.podman.compose.config-hash=047dfb1c96311e310c692d09ddd31fb338e48a61022f393a44140e156d8b124e --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-8 --cap-add SYS_PTRACE -v infra_redis-data-8:/data --net infra_redis-cluster-net --network-alias redis-node-8 --ip=10.10.10.18 -p 2218:22 -p 7008:6379 -p 17008:16379 --hostname redis-node-8 --privileged --restart unless-stopped infra_redis-node-8
+79ffeb821a050709eed4e72f0a47dbe263b8d4baee21245de46f483903d65fd4
+exit code: 0
+[0;36m[STEP][0m  13:18:08 Waiting for SSH on new scale nodes...
+[DEBUG SSH] Connecting to 10.10.10.17 via 127.0.0.1:2217...
+[0;32m[✔][0m    SSH ready: 10.10.10.17
+[DEBUG SSH] Connecting to 10.10.10.18 via 127.0.0.1:2218...
+[0;32m[✔][0m    SSH ready: 10.10.10.18
+[0;36m[STEP][0m  13:18:08 Installing Redis on new scale nodes...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to  via 127.0.0.1:22...
+
+PLAY [Provision Redis Cluster Nodes] *******************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Install build dependencies] **************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Create redis group] **********************************************
+changed: [redis-node-7]
+changed: [redis-node-8]
+
+TASK [redis : Create redis user] ***********************************************
+changed: [redis-node-7]
+changed: [redis-node-8]
+
+TASK [redis : Create required directories] *************************************
+changed: [redis-node-8] => (item=/opt/redis)
+changed: [redis-node-7] => (item=/opt/redis)
+changed: [redis-node-7] => (item=/var/lib/redis)
+changed: [redis-node-8] => (item=/var/lib/redis)
+changed: [redis-node-7] => (item=/var/log/redis)
+changed: [redis-node-8] => (item=/var/log/redis)
+changed: [redis-node-7] => (item=/var/run/redis)
+changed: [redis-node-8] => (item=/var/run/redis)
+changed: [redis-node-7] => (item=/etc/redis)
+changed: [redis-node-8] => (item=/etc/redis)
+changed: [redis-node-7] => (item=/tmp/redis-build)
+changed: [redis-node-8] => (item=/tmp/redis-build)
+
+TASK [redis : Check if redis-server exists] ************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Get Redis version] ***********************************************
+skipping: [redis-node-8]
+skipping: [redis-node-7]
+
+TASK [redis : Set Redis needs install fact] ************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Download Redis source on host] ***********************************
+ok: [redis-node-8 -> localhost]
+
+TASK [redis : Copy Redis source to remote nodes] *******************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Extract Redis source] ********************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Build Redis from source] *****************************************
+changed: [redis-node-7]
+changed: [redis-node-8]
+
+TASK [redis : Install Redis binaries] ******************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Create Redis symlinks in /usr/local/bin] *************************
+changed: [redis-node-8] => (item=redis-server)
+changed: [redis-node-7] => (item=redis-server)
+changed: [redis-node-8] => (item=redis-cli)
+changed: [redis-node-7] => (item=redis-cli)
+changed: [redis-node-7] => (item=redis-benchmark)
+changed: [redis-node-8] => (item=redis-benchmark)
+changed: [redis-node-7] => (item=redis-check-aof)
+changed: [redis-node-8] => (item=redis-check-aof)
+changed: [redis-node-7] => (item=redis-check-rdb)
+changed: [redis-node-8] => (item=redis-check-rdb)
+
+TASK [redis : Deploy Redis configuration] **************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Deploy Redis systemd service (if systemd available)] *************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Ensure Redis data directory has correct permissions] *************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Start Redis server] **********************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [redis : Wait for Redis to be ready] **************************************
+ok: [redis-node-7]
+ok: [redis-node-8]
+
+TASK [redis : Verify Redis is responding] **************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [redis : Clean up build artifacts] ****************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+RUNNING HANDLER [redis : restart redis] ****************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+PLAY [Prepare Nodes for Cluster Formation] *************************************
+
+TASK [Check if this node is already in a cluster] ******************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [Check cluster_state from node info] **************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [Stop Redis for reset (when not already in a healthy cluster)] ************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [Kill any remaining Redis processes] **************************************
+fatal: [redis-node-8]: FAILED! => changed=true 
+  cmd: pkill -9 -f redis-server || true
+  delta: '0:00:00.010151'
+  end: '2026-06-16 07:51:50.990673'
+  msg: non-zero return code
+  rc: -9
+  start: '2026-06-16 07:51:50.980522'
+  stderr: ''
+  stderr_lines: <omitted>
+  stdout: ''
+  stdout_lines: <omitted>
+...ignoring
+fatal: [redis-node-7]: FAILED! => changed=true 
+  cmd: pkill -9 -f redis-server || true
+  delta: '0:00:00.011212'
+  end: '2026-06-16 07:51:50.996562'
+  msg: non-zero return code
+  rc: -9
+  start: '2026-06-16 07:51:50.985350'
+  stderr: ''
+  stderr_lines: <omitted>
+  stdout: ''
+  stdout_lines: <omitted>
+...ignoring
+
+TASK [Wait for Redis port to be free] ******************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [Delete all persisted Redis data files] ***********************************
+changed: [redis-node-7]
+changed: [redis-node-8]
+
+TASK [Recreate Redis data directory] *******************************************
+changed: [redis-node-7]
+changed: [redis-node-8]
+
+TASK [Start Redis fresh] *******************************************************
+changed: [redis-node-8]
+changed: [redis-node-7]
+
+TASK [Wait for Redis to be ready] **********************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [Verify Redis is responding with PONG] ************************************
+ok: [redis-node-7]
+ok: [redis-node-8]
+
+TASK [Verify node sees itself as standalone (no cluster peers)] ****************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+TASK [Set node ready for cluster formation] ************************************
+ok: [redis-node-8]
+ok: [redis-node-7]
+
+PLAY [Form Redis Cluster] ******************************************************
+skipping: no hosts matched
+
+PLAY RECAP *********************************************************************
+redis-node-7               : ok=32   changed=18   unreachable=0    failed=0    skipped=1    rescued=0    ignored=1   
+redis-node-8               : ok=33   changed=18   unreachable=0    failed=0    skipped=1    rescued=0    ignored=1   
+
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[0;36m[STEP][0m  13:21:56 Joining redis-node-7 (10.10.10.17:6379) to cluster as master...
+[DEBUG SSH] Connecting to  via 127.0.0.1:22...
+[0;31m[ERROR][0m 13:21:56 Cluster command failed (rc=255):
+ansible@127.0.0.1: Permission denied (publickey,password).
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[DEBUG SSH] Connecting to 10.10.10.11 via 127.0.0.1:2211...
+[0;31m[✘][0m    Failed to find node ID for redis-node-7 in cluster

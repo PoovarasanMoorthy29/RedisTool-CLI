@@ -1,0 +1,64 @@
+
+════════════════════════════════════════════════════════════
+  Preflight Checks
+════════════════════════════════════════════════════════════
+
+[✔]    Podman 4.9.3 found
+[✔]    Ansible 2.16.3 found
+Proceeding...
+
+
+════════════════════════════════════════════════════════════
+  Seeding 1000 Keys
+════════════════════════════════════════════════════════════
+
+
+PLAY [Seed Redis Cluster Data] *************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-1]
+
+TASK [Ensure python3-hashlib is available] *************************************
+ok: [redis-node-1]
+
+TASK [Create seed script] ******************************************************
+changed: [redis-node-1]
+
+TASK [Run seed script] *********************************************************
+changed: [redis-node-1]
+
+TASK [Display seed results] ****************************************************
+ok: [redis-node-1] => 
+  msg:
+  - Seeding 1000 deterministic keys into Redis Cluster...
+  - '  Progress: 100/1000 keys inserted...'
+  - '  Progress: 200/1000 keys inserted...'
+  - '  Progress: 300/1000 keys inserted...'
+  - '  Progress: 400/1000 keys inserted...'
+  - '  Progress: 500/1000 keys inserted...'
+  - '  Progress: 600/1000 keys inserted...'
+  - '  Progress: 700/1000 keys inserted...'
+  - '  Progress: 800/1000 keys inserted...'
+  - '  Progress: 900/1000 keys inserted...'
+  - '  Progress: 1000/1000 keys inserted...'
+  - ''
+  - ============================================================
+  - Seed Complete
+  - '  Total:   1000'
+  - '  Success: 1000'
+  - '  Failed:  0'
+  - '  Time:    3.21s'
+  - '  Rate:    311 keys/sec'
+  - ''
+  - 'Distribution across masters:'
+  - '  - 10.10.0.11:6379: 333 keys'
+  - '  - 10.10.0.12:6379: 324 keys'
+  - '  - 10.10.0.13:6379: 343 keys'
+  - ============================================================
+
+TASK [Clean up seed script] ****************************************************
+changed: [redis-node-1]
+
+PLAY RECAP *********************************************************************
+redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

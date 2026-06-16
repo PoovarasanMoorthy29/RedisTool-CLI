@@ -1,0 +1,184 @@
+---
+# Redis Role - Main Tasks
+# Installs Redis from source, configures cluster mode, and starts the service
+
+- name: Install build dependencies
+  apt:
+    name:
+      - build-essential
+      - tcl
+      - pkg-config
+      - libssl-dev
+      - wget
+      - tar
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Create redis group
+  group:
+    name: "{{ redis_group }}"
+    state: present
+    system: yes
+
+- name: Create redis user
+  user:
+    name: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    home: "{{ redis_dir }}"
+    create_home: no
+
+- name: Create required directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0755"
+  loop:
+    - "{{ redis_install_dir }}"
+    - "{{ redis_dir }}"
+    - "{{ redis_log_dir }}"
+    - "/var/run/redis"
+    - "/etc/redis"
+    - "/tmp/redis-build"
+
+- name: Check if redis-server exists
+  stat:
+    path: "{{ redis_install_dir }}/bin/redis-server"
+  register: redis_server_bin
+
+- name: Get Redis version
+  command: "{{ redis_install_dir }}/bin/redis-server --version"
+  register: redis_installed_version
+  changed_when: false
+  when: redis_server_bin.stat.exists
+  ignore_errors: yes
+
+- name: Set Redis needs install fact
+  set_fact:
+    redis_needs_install: >-
+      {{ not redis_server_bin.stat.exists or
+         (redis_installed_version.stdout is not defined) or
+         (redis_version not in redis_installed_version.stdout) }}
+
+- name: Download Redis source on host
+  delegate_to: localhost
+  become: no
+  get_url:
+    url: "https://download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp/redis-{{ redis_version }}.tar.gz"
+    mode: "0644"
+    timeout: 120
+  run_once: true
+  when: redis_needs_install | bool
+
+- name: Copy Redis source to remote nodes
+  copy:
+    src: "/tmp/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp/redis-build/redis-{{ redis_version }}.tar.gz"
+    mode: "0644"
+  when: redis_needs_install | bool
+
+- name: Extract Redis source
+  unarchive:
+    src: "/tmp/redis-build/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp/redis-build/"
+    remote_src: yes
+  when: redis_needs_install | bool
+
+- name: Build Redis from source
+  shell: |
+    cd /tmp/redis-build/redis-{{ redis_version }}
+    make distclean || true
+    make -j$(nproc) BUILD_TLS=no
+  args:
+    creates: "/tmp/redis-build/redis-{{ redis_version }}/src/redis-server"
+  when: redis_needs_install | bool
+
+- name: Install Redis binaries
+  shell: |
+    cd /tmp/redis-build/redis-{{ redis_version }}
+    make install PREFIX={{ redis_install_dir }}
+  when: redis_needs_install | bool
+
+- name: Create Redis symlinks in /usr/local/bin
+  file:
+    src: "{{ redis_install_dir }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: yes
+  loop:
+    - redis-server
+    - redis-cli
+    - redis-benchmark
+    - redis-check-aof
+    - redis-check-rdb
+
+- name: Deploy Redis configuration
+  template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0640"
+  notify: restart redis
+
+- name: Deploy Redis systemd service (if systemd available)
+  template:
+    src: redis.service.j2
+    dest: /etc/init.d/redis-server
+    mode: "0755"
+  notify: restart redis
+
+- name: Ensure Redis data directory has correct permissions
+  file:
+    path: "{{ redis_dir }}"
+    state: directory
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0755"
+    recurse: yes
+
+- name: Clean up incompatible data files on version change
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ redis_dir }}/dump.rdb"
+    - "{{ redis_dir }}/appendonlydir"
+  when: (redis_needs_install | bool) or (force_reset | default(false) | bool)
+
+- name: Start Redis server
+  shell: |
+    /etc/init.d/redis-server stop || true
+    sleep 1
+    /etc/init.d/redis-server start
+    sleep 2
+    {{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} ping
+  register: redis_start_result
+  changed_when: true
+
+- name: Wait for Redis to be ready
+  wait_for:
+    host: "0.0.0.0"
+    port: "{{ redis_port }}"
+    delay: 2
+    timeout: 30
+    state: started
+
+- name: Verify Redis is responding
+  command: "{{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} ping"
+  register: redis_ping
+  until: redis_ping.stdout == "PONG"
+  retries: 5
+  delay: 2
+  changed_when: false
+
+- name: Clean up build artifacts
+  file:
+    path: "/tmp/redis-build"
+    state: absent
+  when: redis_needs_install | bool

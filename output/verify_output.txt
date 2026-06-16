@@ -1,0 +1,97 @@
+
+════════════════════════════════════════════════════════════
+  Preflight Checks
+════════════════════════════════════════════════════════════
+
+[✔]    Podman 4.9.3 found
+[✔]    Ansible 2.16.3 found
+Proceeding...
+
+
+════════════════════════════════════════════════════════════
+  Full Cluster Verification
+════════════════════════════════════════════════════════════
+
+[STEP]  16:43:01 1. Data integrity check...
+
+PLAY [Verify Redis Cluster Data Integrity] *************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-1]
+
+TASK [Create verify script] ****************************************************
+changed: [redis-node-1]
+
+TASK [Run verification script] *************************************************
+changed: [redis-node-1]
+
+TASK [Display verification results] ********************************************
+ok: [redis-node-1] => 
+  msg:
+  - Verifying 1000 keys in Redis Cluster...
+  - '  Progress: 100/1000 keys verified...'
+  - '  Progress: 200/1000 keys verified...'
+  - '  Progress: 300/1000 keys verified...'
+  - '  Progress: 400/1000 keys verified...'
+  - '  Progress: 500/1000 keys verified...'
+  - '  Progress: 600/1000 keys verified...'
+  - '  Progress: 700/1000 keys verified...'
+  - '  Progress: 800/1000 keys verified...'
+  - '  Progress: 900/1000 keys verified...'
+  - '  Progress: 1000/1000 keys verified...'
+  - ''
+  - ============================================================
+  - Data Verification Report
+  - ============================================================
+  - '  Total Keys:  1000'
+  - '  Passed:      1000'
+  - '  Missing:     0'
+  - '  Corrupted:   0'
+  - '  Errors:      0'
+  - '  Time:        3.39s'
+  - ============================================================
+  - ''
+  - PASS — 1000/1000 keys verified
+
+TASK [Set verification outcome] ************************************************
+ok: [redis-node-1]
+
+TASK [Fail if verification failed] *********************************************
+skipping: [redis-node-1]
+
+TASK [Clean up verify script] **************************************************
+changed: [redis-node-1]
+
+PLAY RECAP *********************************************************************
+redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+[✔]    Data integrity: PASS
+[STEP]  16:43:08 2. Version consistency...
+[INFO]  16:43:09   10.10.0.11 (redis-node-1): v7.0.15
+[INFO]  16:43:10   10.10.0.12 (redis-node-2): v7.0.15
+[INFO]  16:43:10   10.10.0.13 (redis-node-3): v7.0.15
+[INFO]  16:43:10   10.10.0.14 (redis-node-4): v7.0.15
+[INFO]  16:43:11   10.10.0.15 (redis-node-5): v7.0.15
+[INFO]  16:43:11   10.10.0.16 (redis-node-6): v7.0.15
+[✔]    Version consistency: PASS (all v7.0.15)
+[STEP]  16:43:11 3. Cluster state...
+[✔]    Cluster state: OK
+[STEP]  16:43:11 4. Slot coverage...
+[✔]    Slot coverage: 16384/16384
+[STEP]  16:43:11 5. Replication lag...
+[INFO]  16:43:13   10.10.0.14 (replica): master_link_status=up | slave_read_repl_offset:33945; slave_repl_offset:33945; master_repl_offset:33945; second_repl_offset:-1
+[INFO]  16:43:13   10.10.0.15 (replica): master_link_status=up | slave_read_repl_offset:32965; slave_repl_offset:32965; master_repl_offset:32965; second_repl_offset:-1
+[INFO]  16:43:13   10.10.0.16 (replica): master_link_status=up | slave_read_repl_offset:32083; slave_repl_offset:32083; master_repl_offset:32083; second_repl_offset:-1
+[✔]    Replication lag: PASS — all replicas have master_link_status:up
+
+════════════════════════════════════════════════════════════
+  Verification Summary
+════════════════════════════════════════════════════════════
+
+ - Cluster State            : PASS
+ - Data Integrity           : PASS
+ - Replication Lag          : PASS
+ - Slot Coverage            : PASS
+ - Version Consistency      : PASS
+
+[✔]    All checks passed!
