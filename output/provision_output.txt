@@ -12,19 +12,19 @@ Proceeding...
   Provisioning Redis Cluster v7.0.15 (3M + 3R)
 ════════════════════════════════════════════════════════════
 
-[STEP]  20:30:36 Checking if cluster is already provisioned...
-[STEP]  20:30:36 Cleaning up any previous infrastructure...
-[STEP]  20:30:36 Tearing down infrastructure...
+[STEP]  21:02:47 Checking if cluster is already provisioned...
+[STEP]  21:02:47 Cleaning up any previous infrastructure...
+[STEP]  21:02:47 Tearing down infrastructure...
 podman-compose version: 1.0.6
 ['podman', '--version', '']
 using podman version: 4.9.3
 ** excluding:  set()
 podman stop -t 10 redis-node-8
-redis-node-8
-exit code: 0
+Error: no container with name or ID "redis-node-8" found: no such container
+exit code: 125
 podman stop -t 10 redis-node-7
-redis-node-7
-exit code: 0
+Error: no container with name or ID "redis-node-7" found: no such container
+exit code: 125
 podman stop -t 10 redis-node-6
 redis-node-6
 exit code: 0
@@ -44,11 +44,11 @@ podman stop -t 10 redis-node-1
 redis-node-1
 exit code: 0
 podman rm redis-node-8
-redis-node-8
-exit code: 0
+Error: no container with ID or name "redis-node-8" found: no such container
+exit code: 1
 podman rm redis-node-7
-redis-node-7
-exit code: 0
+Error: no container with ID or name "redis-node-7" found: no such container
+exit code: 1
 podman rm redis-node-6
 redis-node-6
 exit code: 0
@@ -87,19 +87,14 @@ exit code: 0
 podman volume rm infra_redis-data-6
 infra_redis-data-6
 exit code: 0
-podman volume rm infra_redis-data-7
-infra_redis-data-7
-exit code: 0
-podman volume rm infra_redis-data-8
-infra_redis-data-8
-exit code: 0
 [✔]    Infrastructure destroyed
-[STEP]  20:30:55 Bringing up 6-node container infrastructure...
-[✔]    SSH keypair exists
+[STEP]  21:03:02 Bringing up 6-node container infrastructure...
+[STEP]  21:03:02 Generating SSH keypair for Ansible...
+[✔]    SSH keypair generated
 podman-compose version: 1.0.6
 ['podman', '--version', '']
 using podman version: 4.9.3
-** excluding:  {'redis-node-8', 'redis-node-7'}
+** excluding:  {'redis-node-7', 'redis-node-8'}
 podman build -f ./Containerfile -t infra_redis-node-1 .
 STEP 1/12: FROM ubuntu:22.04
 STEP 2/12: ENV DEBIAN_FRONTEND=noninteractive
@@ -121,28 +116,29 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_CHOWN: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_DAC_OVERRIDE: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_FOWNER: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_FSETID: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_KILL: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_NET_BIND_SERVICE: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_SETFCAP: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_SETGID: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_SETPCAP: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_SETUID: operation not permitted"
+time="2026-06-16T21:03:06+05:30" level=warning msg="can't raise ambient capability CAP_SYS_CHROOT: operation not permitted"
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
 COMMIT infra_redis-node-1
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-1:latest
-Successfully tagged localhost/infra_redis-node-6:latest
-Successfully tagged localhost/infra_redis-node-5:latest
-Successfully tagged localhost/infra_redis-node-4:latest
-Successfully tagged localhost/infra_redis-node-3:latest
-Successfully tagged localhost/infra_redis-node-2:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 podman build -f ./Containerfile -t infra_redis-node-2 .
 STEP 1/12: FROM ubuntu:22.04
@@ -165,28 +161,24 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> Using cache 9207af9c580c81138909af3d810fa90caa8379d3312924a2d37bb02d704d99df
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> Using cache fdf84e7c53c8fee9d868ca18da49c9a3ceeebfe56d960656c42a518582b3c074
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+--> Using cache f501196f60ff4b3602dd6f3e78e033deb0d07c29a8839fa705b2261211d8d245
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> Using cache abff83749030460ae7eb34895010c281ed6767fec4c591c4d0398fd0bd63efba
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+--> Using cache c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 COMMIT infra_redis-node-2
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-2:latest
 Successfully tagged localhost/infra_redis-node-1:latest
-Successfully tagged localhost/infra_redis-node-6:latest
-Successfully tagged localhost/infra_redis-node-5:latest
-Successfully tagged localhost/infra_redis-node-4:latest
-Successfully tagged localhost/infra_redis-node-3:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 podman build -f ./Containerfile -t infra_redis-node-3 .
 STEP 1/12: FROM ubuntu:22.04
@@ -209,28 +201,25 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> Using cache 9207af9c580c81138909af3d810fa90caa8379d3312924a2d37bb02d704d99df
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> Using cache fdf84e7c53c8fee9d868ca18da49c9a3ceeebfe56d960656c42a518582b3c074
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+--> Using cache f501196f60ff4b3602dd6f3e78e033deb0d07c29a8839fa705b2261211d8d245
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> Using cache abff83749030460ae7eb34895010c281ed6767fec4c591c4d0398fd0bd63efba
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+--> Using cache c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 COMMIT infra_redis-node-3
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-3:latest
 Successfully tagged localhost/infra_redis-node-2:latest
 Successfully tagged localhost/infra_redis-node-1:latest
-Successfully tagged localhost/infra_redis-node-6:latest
-Successfully tagged localhost/infra_redis-node-5:latest
-Successfully tagged localhost/infra_redis-node-4:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 podman build -f ./Containerfile -t infra_redis-node-4 .
 STEP 1/12: FROM ubuntu:22.04
@@ -253,28 +242,26 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> Using cache 9207af9c580c81138909af3d810fa90caa8379d3312924a2d37bb02d704d99df
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> Using cache fdf84e7c53c8fee9d868ca18da49c9a3ceeebfe56d960656c42a518582b3c074
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+--> Using cache f501196f60ff4b3602dd6f3e78e033deb0d07c29a8839fa705b2261211d8d245
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> Using cache abff83749030460ae7eb34895010c281ed6767fec4c591c4d0398fd0bd63efba
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+--> Using cache c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 COMMIT infra_redis-node-4
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-4:latest
 Successfully tagged localhost/infra_redis-node-3:latest
 Successfully tagged localhost/infra_redis-node-2:latest
 Successfully tagged localhost/infra_redis-node-1:latest
-Successfully tagged localhost/infra_redis-node-6:latest
-Successfully tagged localhost/infra_redis-node-5:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 podman build -f ./Containerfile -t infra_redis-node-5 .
 STEP 1/12: FROM ubuntu:22.04
@@ -297,28 +284,27 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> Using cache 9207af9c580c81138909af3d810fa90caa8379d3312924a2d37bb02d704d99df
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> Using cache fdf84e7c53c8fee9d868ca18da49c9a3ceeebfe56d960656c42a518582b3c074
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+--> Using cache f501196f60ff4b3602dd6f3e78e033deb0d07c29a8839fa705b2261211d8d245
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> Using cache abff83749030460ae7eb34895010c281ed6767fec4c591c4d0398fd0bd63efba
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+--> Using cache c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 COMMIT infra_redis-node-5
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-5:latest
 Successfully tagged localhost/infra_redis-node-4:latest
 Successfully tagged localhost/infra_redis-node-3:latest
 Successfully tagged localhost/infra_redis-node-2:latest
 Successfully tagged localhost/infra_redis-node-1:latest
-Successfully tagged localhost/infra_redis-node-6:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 podman build -f ./Containerfile -t infra_redis-node-6 .
 STEP 1/12: FROM ubuntu:22.04
@@ -341,28 +327,28 @@ STEP 7/12: RUN mkdir -p /root/.ssh &&     chmod 700 /root/.ssh
 --> Using cache 28fd7a887eca60873e258147df9448fad0f25dcb251e29eab5561abe6d718b5c
 --> 28fd7a887eca
 STEP 8/12: COPY ssh_keys/id_rsa.pub /home/ansible/.ssh/authorized_keys
---> Using cache f352a84b5190494b5e56c5a04020716a9991b56b3880eccd09ec6bc8527d2547
---> f352a84b5190
+--> Using cache 9207af9c580c81138909af3d810fa90caa8379d3312924a2d37bb02d704d99df
+--> 9207af9c580c
 STEP 9/12: COPY ssh_keys/id_rsa.pub /root/.ssh/authorized_keys
---> Using cache 85752a3c54b5dfd62c87d5a336265b7e86ce5f1087073c05efef9991c56bc671
---> 85752a3c54b5
+--> Using cache fdf84e7c53c8fee9d868ca18da49c9a3ceeebfe56d960656c42a518582b3c074
+--> fdf84e7c53c8
 STEP 10/12: RUN chmod 600 /home/ansible/.ssh/authorized_keys &&     chown -R ansible:ansible /home/ansible/.ssh &&     chmod 600 /root/.ssh/authorized_keys
---> Using cache 0f10cf22d4ec32125cc0f7740229ab3b3dc6b3644397808aa7ff509ce4ceb245
---> 0f10cf22d4ec
+--> Using cache f501196f60ff4b3602dd6f3e78e033deb0d07c29a8839fa705b2261211d8d245
+--> f501196f60ff
 STEP 11/12: EXPOSE 22
---> Using cache a4ffbd7f63f820835a36158325bddc5d78cd8f1bbf8f645a06a22c0afc4c8898
---> a4ffbd7f63f8
+--> Using cache abff83749030460ae7eb34895010c281ed6767fec4c591c4d0398fd0bd63efba
+--> abff83749030
 STEP 12/12: CMD ["/usr/sbin/sshd", "-D", "-e"]
---> Using cache ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+--> Using cache c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 COMMIT infra_redis-node-6
---> ccba1ef5fb90
+--> c12cf3ff7fb0
 Successfully tagged localhost/infra_redis-node-6:latest
 Successfully tagged localhost/infra_redis-node-5:latest
 Successfully tagged localhost/infra_redis-node-4:latest
 Successfully tagged localhost/infra_redis-node-3:latest
 Successfully tagged localhost/infra_redis-node-2:latest
 Successfully tagged localhost/infra_redis-node-1:latest
-ccba1ef5fb90b9e9df6606bddff03b6239edae6cdcb34f86fb31f0bc2a60ef99
+c12cf3ff7fb0a55ac423c30db2c9b724874dd9f6fa4ec404249b7e7e17d5934c
 exit code: 0
 ['podman', 'ps', '--filter', 'label=io.podman.compose.project=infra', '-a', '--format', '{{ index .Labels "io.podman.compose.config-hash"}}']
 podman volume inspect infra_redis-data-1 || podman volume create infra_redis-data-1
@@ -374,7 +360,7 @@ Error: no such volume infra_redis-data-1
 ['podman', 'network', 'create', '--label', 'io.podman.compose.project=infra', '--label', 'com.docker.compose.project=infra', '--driver', 'bridge', '--subnet', '10.10.0.0/24', '--gateway', '10.10.0.1', 'infra_redis-cluster-net']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-1 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-1 --cap-add SYS_PTRACE -v infra_redis-data-1:/data --net infra_redis-cluster-net --network-alias redis-node-1 --ip=10.10.0.11 -p 2211:22 -p 7001:6379 -p 17001:16379 --hostname redis-node-1 --privileged --restart unless-stopped infra_redis-node-1
-5fed2b547e89ab7659d9a8617761a4db188c2a3bf3d7c322f5d67d8a522725d2
+86fc3dd7d90c58581a4faaa95216540122285591722f7a8cf2921ba74e1e79c8
 exit code: 0
 podman volume inspect infra_redis-data-2 || podman volume create infra_redis-data-2
 ['podman', 'volume', 'inspect', 'infra_redis-data-2']
@@ -383,7 +369,7 @@ Error: no such volume infra_redis-data-2
 ['podman', 'volume', 'inspect', 'infra_redis-data-2']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-2 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-2 --cap-add SYS_PTRACE -v infra_redis-data-2:/data --net infra_redis-cluster-net --network-alias redis-node-2 --ip=10.10.0.12 -p 2212:22 -p 7002:6379 -p 17002:16379 --hostname redis-node-2 --privileged --restart unless-stopped infra_redis-node-2
-d3d29c597b6f6864336f14f4d8d6c63ff6bafa0da2bfc99141706d70910542d3
+04be66b08b19550bc07d24d0884cf62f517413700851dafcc164bc2a648150a0
 exit code: 0
 podman volume inspect infra_redis-data-3 || podman volume create infra_redis-data-3
 ['podman', 'volume', 'inspect', 'infra_redis-data-3']
@@ -392,7 +378,7 @@ Error: no such volume infra_redis-data-3
 ['podman', 'volume', 'inspect', 'infra_redis-data-3']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-3 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-3 --cap-add SYS_PTRACE -v infra_redis-data-3:/data --net infra_redis-cluster-net --network-alias redis-node-3 --ip=10.10.0.13 -p 2213:22 -p 7003:6379 -p 17003:16379 --hostname redis-node-3 --privileged --restart unless-stopped infra_redis-node-3
-bad36ec54e93feda1eec9b1643063f5f94cb35f8a3194487f2d8f538b76373a8
+a10ef0871a5434f2e54ec78ea43849619b9fdd3a90a3493eddfcfc104b7eee9d
 exit code: 0
 podman volume inspect infra_redis-data-4 || podman volume create infra_redis-data-4
 ['podman', 'volume', 'inspect', 'infra_redis-data-4']
@@ -401,7 +387,7 @@ Error: no such volume infra_redis-data-4
 ['podman', 'volume', 'inspect', 'infra_redis-data-4']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-4 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-4 --cap-add SYS_PTRACE -v infra_redis-data-4:/data --net infra_redis-cluster-net --network-alias redis-node-4 --ip=10.10.0.14 -p 2214:22 -p 7004:6379 -p 17004:16379 --hostname redis-node-4 --privileged --restart unless-stopped infra_redis-node-4
-d86e78b4a5a34813e2e9421043374e4778a2e9eea5f006d25eaa6761d82aee64
+ea1f201f2f7a6f1defd5dcfa7ec83298bf3af039a5aecdd2ee9ff83e40375468
 exit code: 0
 podman volume inspect infra_redis-data-5 || podman volume create infra_redis-data-5
 ['podman', 'volume', 'inspect', 'infra_redis-data-5']
@@ -410,7 +396,7 @@ Error: no such volume infra_redis-data-5
 ['podman', 'volume', 'inspect', 'infra_redis-data-5']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-5 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-5 --cap-add SYS_PTRACE -v infra_redis-data-5:/data --net infra_redis-cluster-net --network-alias redis-node-5 --ip=10.10.0.15 -p 2215:22 -p 7005:6379 -p 17005:16379 --hostname redis-node-5 --privileged --restart unless-stopped infra_redis-node-5
-f4b67baa901ac047d385e139811f32bbfb8061504e2141946be8e917ee5073e7
+ddf6fafc69fe191123a4d417d185203048c89630b18facf9c35b1592299bf630
 exit code: 0
 podman volume inspect infra_redis-data-6 || podman volume create infra_redis-data-6
 ['podman', 'volume', 'inspect', 'infra_redis-data-6']
@@ -419,98 +405,98 @@ Error: no such volume infra_redis-data-6
 ['podman', 'volume', 'inspect', 'infra_redis-data-6']
 ['podman', 'network', 'exists', 'infra_redis-cluster-net']
 podman run --name=redis-node-6 -d --label io.podman.compose.config-hash=627b64ab5e80dd8484f0f90333f31e5a7a0c27a91a95e7d374229fd555e2dac9 --label io.podman.compose.project=infra --label io.podman.compose.version=1.0.6 --label PODMAN_SYSTEMD_UNIT=podman-compose@infra.service --label com.docker.compose.project=infra --label com.docker.compose.project.working_dir=/home/poovarasan/Desktop/RedisTool-CLI/infra --label com.docker.compose.project.config_files=compose.yml --label com.docker.compose.container-number=1 --label com.docker.compose.service=redis-node-6 --cap-add SYS_PTRACE -v infra_redis-data-6:/data --net infra_redis-cluster-net --network-alias redis-node-6 --ip=10.10.0.16 -p 2216:22 -p 7006:6379 -p 17006:16379 --hostname redis-node-6 --privileged --restart unless-stopped infra_redis-node-6
-a0e30dcc3ab1af9b0394e889c4672e397c7092dc09635593c94a309944c3b2a1
+56a974e96798af19a417fc1c14dafcbe4aa257c6f45338b0042aa05096ca2087
 exit code: 0
 ** skipping:  redis-node-7
 ** skipping:  redis-node-8
-[STEP]  20:31:11 Waiting for SSH on all nodes...
+[STEP]  21:03:22 Waiting for SSH on all nodes...
 [✔]    SSH ready: 10.10.0.11
 [✔]    SSH ready: 10.10.0.12
 [✔]    SSH ready: 10.10.0.13
 [✔]    SSH ready: 10.10.0.14
 [✔]    SSH ready: 10.10.0.15
 [✔]    SSH ready: 10.10.0.16
-[STEP]  20:31:13 Installing Redis 7.0.15 on all nodes...
+[STEP]  21:03:24 Installing Redis 7.0.15 on all nodes...
 
 PLAY [Provision Redis Cluster Nodes] *******************************************
 
 TASK [Gathering Facts] *********************************************************
-ok: [redis-node-3]
-ok: [redis-node-5]
-ok: [redis-node-1]
 ok: [redis-node-4]
-ok: [redis-node-6]
+ok: [redis-node-3]
 ok: [redis-node-2]
+ok: [redis-node-1]
+ok: [redis-node-6]
+ok: [redis-node-5]
 
 TASK [redis : Install build dependencies] **************************************
+ok: [redis-node-1]
+ok: [redis-node-2]
 ok: [redis-node-5]
 ok: [redis-node-4]
-ok: [redis-node-2]
-ok: [redis-node-1]
-ok: [redis-node-6]
 ok: [redis-node-3]
+ok: [redis-node-6]
 
 TASK [redis : Create redis group] **********************************************
 changed: [redis-node-4]
-changed: [redis-node-1]
-changed: [redis-node-2]
 changed: [redis-node-3]
-changed: [redis-node-5]
+changed: [redis-node-2]
 changed: [redis-node-6]
+changed: [redis-node-5]
+changed: [redis-node-1]
 
 TASK [redis : Create redis user] ***********************************************
-changed: [redis-node-4]
 changed: [redis-node-5]
+changed: [redis-node-2]
+changed: [redis-node-4]
+changed: [redis-node-6]
 changed: [redis-node-3]
 changed: [redis-node-1]
-changed: [redis-node-6]
-changed: [redis-node-2]
 
 TASK [redis : Create required directories] *************************************
-changed: [redis-node-3] => (item=/opt/redis)
 changed: [redis-node-6] => (item=/opt/redis)
 changed: [redis-node-2] => (item=/opt/redis)
-changed: [redis-node-4] => (item=/opt/redis)
-changed: [redis-node-1] => (item=/opt/redis)
+changed: [redis-node-3] => (item=/opt/redis)
 changed: [redis-node-5] => (item=/opt/redis)
-changed: [redis-node-3] => (item=/var/lib/redis)
-changed: [redis-node-6] => (item=/var/lib/redis)
-changed: [redis-node-2] => (item=/var/lib/redis)
-changed: [redis-node-1] => (item=/var/lib/redis)
-changed: [redis-node-4] => (item=/var/lib/redis)
+changed: [redis-node-1] => (item=/opt/redis)
+changed: [redis-node-4] => (item=/opt/redis)
 changed: [redis-node-5] => (item=/var/lib/redis)
-changed: [redis-node-3] => (item=/var/log/redis)
-changed: [redis-node-2] => (item=/var/log/redis)
-changed: [redis-node-6] => (item=/var/log/redis)
+changed: [redis-node-4] => (item=/var/lib/redis)
+changed: [redis-node-1] => (item=/var/lib/redis)
+changed: [redis-node-3] => (item=/var/lib/redis)
+changed: [redis-node-2] => (item=/var/lib/redis)
+changed: [redis-node-6] => (item=/var/lib/redis)
+changed: [redis-node-4] => (item=/var/log/redis)
 changed: [redis-node-5] => (item=/var/log/redis)
 changed: [redis-node-1] => (item=/var/log/redis)
-changed: [redis-node-4] => (item=/var/log/redis)
-changed: [redis-node-3] => (item=/var/run/redis)
-changed: [redis-node-2] => (item=/var/run/redis)
-changed: [redis-node-6] => (item=/var/run/redis)
+changed: [redis-node-6] => (item=/var/log/redis)
+changed: [redis-node-3] => (item=/var/log/redis)
+changed: [redis-node-2] => (item=/var/log/redis)
 changed: [redis-node-5] => (item=/var/run/redis)
 changed: [redis-node-1] => (item=/var/run/redis)
 changed: [redis-node-4] => (item=/var/run/redis)
+changed: [redis-node-3] => (item=/var/run/redis)
+changed: [redis-node-6] => (item=/var/run/redis)
+changed: [redis-node-2] => (item=/var/run/redis)
+changed: [redis-node-5] => (item=/etc/redis)
+changed: [redis-node-1] => (item=/etc/redis)
 changed: [redis-node-3] => (item=/etc/redis)
 changed: [redis-node-6] => (item=/etc/redis)
 changed: [redis-node-2] => (item=/etc/redis)
-changed: [redis-node-5] => (item=/etc/redis)
-changed: [redis-node-1] => (item=/etc/redis)
 changed: [redis-node-4] => (item=/etc/redis)
-changed: [redis-node-3] => (item=/tmp/redis-build)
-changed: [redis-node-6] => (item=/tmp/redis-build)
-changed: [redis-node-2] => (item=/tmp/redis-build)
 changed: [redis-node-1] => (item=/tmp/redis-build)
+changed: [redis-node-6] => (item=/tmp/redis-build)
 changed: [redis-node-5] => (item=/tmp/redis-build)
+changed: [redis-node-3] => (item=/tmp/redis-build)
+changed: [redis-node-2] => (item=/tmp/redis-build)
 changed: [redis-node-4] => (item=/tmp/redis-build)
 
 TASK [redis : Check if redis-server exists] ************************************
-ok: [redis-node-6]
-ok: [redis-node-5]
 ok: [redis-node-4]
 ok: [redis-node-1]
-ok: [redis-node-3]
 ok: [redis-node-2]
+ok: [redis-node-6]
+ok: [redis-node-3]
+ok: [redis-node-5]
 
 TASK [redis : Get Redis version] ***********************************************
 skipping: [redis-node-1]
@@ -533,34 +519,34 @@ ok: [redis-node-1 -> localhost]
 
 TASK [redis : Copy Redis source to remote nodes] *******************************
 changed: [redis-node-4]
+changed: [redis-node-2]
 changed: [redis-node-3]
+changed: [redis-node-6]
 changed: [redis-node-1]
 changed: [redis-node-5]
-changed: [redis-node-2]
-changed: [redis-node-6]
 
 TASK [redis : Extract Redis source] ********************************************
 changed: [redis-node-2]
-changed: [redis-node-3]
 changed: [redis-node-5]
+changed: [redis-node-3]
+changed: [redis-node-4]
 changed: [redis-node-1]
 changed: [redis-node-6]
-changed: [redis-node-4]
 
 TASK [redis : Build Redis from source] *****************************************
-changed: [redis-node-1]
+changed: [redis-node-4]
+changed: [redis-node-5]
 changed: [redis-node-6]
 changed: [redis-node-2]
-changed: [redis-node-4]
 changed: [redis-node-3]
-changed: [redis-node-5]
+changed: [redis-node-1]
 
 TASK [redis : Install Redis binaries] ******************************************
+changed: [redis-node-1]
 changed: [redis-node-3]
 changed: [redis-node-2]
 changed: [redis-node-5]
 changed: [redis-node-4]
-changed: [redis-node-1]
 changed: [redis-node-6]
 
 TASK [redis : Create Redis symlinks in /usr/local/bin] *************************
@@ -568,69 +554,69 @@ changed: [redis-node-1] => (item=redis-server)
 changed: [redis-node-2] => (item=redis-server)
 changed: [redis-node-3] => (item=redis-server)
 changed: [redis-node-4] => (item=redis-server)
-changed: [redis-node-5] => (item=redis-server)
 changed: [redis-node-6] => (item=redis-server)
+changed: [redis-node-5] => (item=redis-server)
 changed: [redis-node-1] => (item=redis-cli)
 changed: [redis-node-2] => (item=redis-cli)
 changed: [redis-node-3] => (item=redis-cli)
-changed: [redis-node-5] => (item=redis-cli)
 changed: [redis-node-4] => (item=redis-cli)
 changed: [redis-node-6] => (item=redis-cli)
-changed: [redis-node-1] => (item=redis-benchmark)
+changed: [redis-node-5] => (item=redis-cli)
 changed: [redis-node-2] => (item=redis-benchmark)
+changed: [redis-node-1] => (item=redis-benchmark)
 changed: [redis-node-3] => (item=redis-benchmark)
-changed: [redis-node-5] => (item=redis-benchmark)
-changed: [redis-node-6] => (item=redis-benchmark)
 changed: [redis-node-4] => (item=redis-benchmark)
+changed: [redis-node-6] => (item=redis-benchmark)
+changed: [redis-node-5] => (item=redis-benchmark)
 changed: [redis-node-1] => (item=redis-check-aof)
 changed: [redis-node-2] => (item=redis-check-aof)
 changed: [redis-node-3] => (item=redis-check-aof)
-changed: [redis-node-5] => (item=redis-check-aof)
-changed: [redis-node-6] => (item=redis-check-aof)
 changed: [redis-node-4] => (item=redis-check-aof)
+changed: [redis-node-6] => (item=redis-check-aof)
+changed: [redis-node-5] => (item=redis-check-aof)
 changed: [redis-node-1] => (item=redis-check-rdb)
 changed: [redis-node-2] => (item=redis-check-rdb)
 changed: [redis-node-3] => (item=redis-check-rdb)
-changed: [redis-node-5] => (item=redis-check-rdb)
-changed: [redis-node-6] => (item=redis-check-rdb)
 changed: [redis-node-4] => (item=redis-check-rdb)
+changed: [redis-node-6] => (item=redis-check-rdb)
+changed: [redis-node-5] => (item=redis-check-rdb)
 
 TASK [redis : Deploy Redis configuration] **************************************
-changed: [redis-node-2]
-changed: [redis-node-3]
 changed: [redis-node-1]
+changed: [redis-node-3]
 changed: [redis-node-5]
+changed: [redis-node-2]
 changed: [redis-node-4]
 changed: [redis-node-6]
 
 TASK [redis : Deploy Redis systemd service (if systemd available)] *************
 changed: [redis-node-1]
-changed: [redis-node-3]
-changed: [redis-node-4]
 changed: [redis-node-2]
 changed: [redis-node-5]
+changed: [redis-node-3]
 changed: [redis-node-6]
+changed: [redis-node-4]
 
 TASK [redis : Ensure Redis data directory has correct permissions] *************
-ok: [redis-node-1]
 ok: [redis-node-3]
+ok: [redis-node-1]
 ok: [redis-node-2]
+ok: [redis-node-4]
 ok: [redis-node-5]
 ok: [redis-node-6]
-ok: [redis-node-4]
 
 TASK [redis : Clean up incompatible data files on version change] **************
 ok: [redis-node-2] => (item=/var/lib/redis/dump.rdb)
 ok: [redis-node-1] => (item=/var/lib/redis/dump.rdb)
-ok: [redis-node-4] => (item=/var/lib/redis/dump.rdb)
 ok: [redis-node-3] => (item=/var/lib/redis/dump.rdb)
 ok: [redis-node-5] => (item=/var/lib/redis/dump.rdb)
+ok: [redis-node-4] => (item=/var/lib/redis/dump.rdb)
 ok: [redis-node-6] => (item=/var/lib/redis/dump.rdb)
-ok: [redis-node-1] => (item=/var/lib/redis/appendonlydir)
 ok: [redis-node-2] => (item=/var/lib/redis/appendonlydir)
-ok: [redis-node-4] => (item=/var/lib/redis/appendonlydir)
 ok: [redis-node-3] => (item=/var/lib/redis/appendonlydir)
+ok: [redis-node-1] => (item=/var/lib/redis/appendonlydir)
 ok: [redis-node-5] => (item=/var/lib/redis/appendonlydir)
+ok: [redis-node-4] => (item=/var/lib/redis/appendonlydir)
 ok: [redis-node-6] => (item=/var/lib/redis/appendonlydir)
 
 TASK [redis : Start Redis server] **********************************************
@@ -642,46 +628,46 @@ changed: [redis-node-5]
 changed: [redis-node-6]
 
 TASK [redis : Wait for Redis to be ready] **************************************
-ok: [redis-node-1]
-ok: [redis-node-3]
-ok: [redis-node-2]
-ok: [redis-node-4]
 ok: [redis-node-5]
 ok: [redis-node-6]
+ok: [redis-node-1]
+ok: [redis-node-3]
+ok: [redis-node-4]
+ok: [redis-node-2]
 
 TASK [redis : Verify Redis is responding] **************************************
 ok: [redis-node-1]
-ok: [redis-node-3]
 ok: [redis-node-2]
 ok: [redis-node-4]
+ok: [redis-node-3]
 ok: [redis-node-5]
 ok: [redis-node-6]
 
 TASK [redis : Clean up build artifacts] ****************************************
-changed: [redis-node-1]
-changed: [redis-node-2]
 changed: [redis-node-3]
+changed: [redis-node-2]
 changed: [redis-node-4]
+changed: [redis-node-1]
 changed: [redis-node-5]
 changed: [redis-node-6]
 
 RUNNING HANDLER [redis : restart redis] ****************************************
 changed: [redis-node-2]
-changed: [redis-node-3]
 changed: [redis-node-1]
 changed: [redis-node-4]
+changed: [redis-node-3]
 changed: [redis-node-5]
 changed: [redis-node-6]
 
 PLAY [Prepare Nodes for Cluster Formation] *************************************
 
 TASK [Check if this node is already in a cluster] ******************************
-ok: [redis-node-3]
 ok: [redis-node-1]
 ok: [redis-node-2]
-ok: [redis-node-6]
-ok: [redis-node-5]
 ok: [redis-node-4]
+ok: [redis-node-3]
+ok: [redis-node-5]
+ok: [redis-node-6]
 
 TASK [Check cluster_state from node info] **************************************
 ok: [redis-node-1]
@@ -694,31 +680,19 @@ ok: [redis-node-6]
 TASK [Stop Redis for reset (when not already in a healthy cluster)] ************
 changed: [redis-node-1]
 changed: [redis-node-2]
-changed: [redis-node-5]
-changed: [redis-node-3]
 changed: [redis-node-4]
+changed: [redis-node-3]
+changed: [redis-node-5]
 changed: [redis-node-6]
 
 TASK [Kill any remaining Redis processes] **************************************
-fatal: [redis-node-2]: FAILED! => changed=true 
-  cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.012162'
-  end: '2026-06-16 15:07:55.429459'
-  msg: non-zero return code
-  rc: -9
-  start: '2026-06-16 15:07:55.417297'
-  stderr: ''
-  stderr_lines: <omitted>
-  stdout: ''
-  stdout_lines: <omitted>
-...ignoring
 fatal: [redis-node-1]: FAILED! => changed=true 
   cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.012805'
-  end: '2026-06-16 15:07:55.486149'
+  delta: '0:00:00.014282'
+  end: '2026-06-16 15:41:31.347681'
   msg: non-zero return code
   rc: -9
-  start: '2026-06-16 15:07:55.473344'
+  start: '2026-06-16 15:41:31.333399'
   stderr: ''
   stderr_lines: <omitted>
   stdout: ''
@@ -726,11 +700,23 @@ fatal: [redis-node-1]: FAILED! => changed=true
 ...ignoring
 fatal: [redis-node-3]: FAILED! => changed=true 
   cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.012495'
-  end: '2026-06-16 15:07:55.505515'
+  delta: '0:00:00.013936'
+  end: '2026-06-16 15:41:31.360686'
   msg: non-zero return code
   rc: -9
-  start: '2026-06-16 15:07:55.493020'
+  start: '2026-06-16 15:41:31.346750'
+  stderr: ''
+  stderr_lines: <omitted>
+  stdout: ''
+  stdout_lines: <omitted>
+...ignoring
+fatal: [redis-node-2]: FAILED! => changed=true 
+  cmd: pkill -9 -f redis-server || true
+  delta: '0:00:00.013814'
+  end: '2026-06-16 15:41:31.376164'
+  msg: non-zero return code
+  rc: -9
+  start: '2026-06-16 15:41:31.362350'
   stderr: ''
   stderr_lines: <omitted>
   stdout: ''
@@ -738,11 +724,11 @@ fatal: [redis-node-3]: FAILED! => changed=true
 ...ignoring
 fatal: [redis-node-4]: FAILED! => changed=true 
   cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.022122'
-  end: '2026-06-16 15:07:55.547147'
+  delta: '0:00:00.013995'
+  end: '2026-06-16 15:41:31.473763'
   msg: non-zero return code
   rc: -9
-  start: '2026-06-16 15:07:55.525025'
+  start: '2026-06-16 15:41:31.459768'
   stderr: ''
   stderr_lines: <omitted>
   stdout: ''
@@ -750,11 +736,11 @@ fatal: [redis-node-4]: FAILED! => changed=true
 ...ignoring
 fatal: [redis-node-5]: FAILED! => changed=true 
   cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.012191'
-  end: '2026-06-16 15:07:55.710035'
+  delta: '0:00:00.010539'
+  end: '2026-06-16 15:41:31.631232'
   msg: non-zero return code
   rc: -9
-  start: '2026-06-16 15:07:55.697844'
+  start: '2026-06-16 15:41:31.620693'
   stderr: ''
   stderr_lines: <omitted>
   stdout: ''
@@ -762,11 +748,11 @@ fatal: [redis-node-5]: FAILED! => changed=true
 ...ignoring
 fatal: [redis-node-6]: FAILED! => changed=true 
   cmd: pkill -9 -f redis-server || true
-  delta: '0:00:00.010214'
-  end: '2026-06-16 15:07:55.732650'
+  delta: '0:00:00.010210'
+  end: '2026-06-16 15:41:31.649866'
   msg: non-zero return code
   rc: -9
-  start: '2026-06-16 15:07:55.722436'
+  start: '2026-06-16 15:41:31.639656'
   stderr: ''
   stderr_lines: <omitted>
   stdout: ''
@@ -775,57 +761,57 @@ fatal: [redis-node-6]: FAILED! => changed=true
 
 TASK [Wait for Redis port to be free] ******************************************
 ok: [redis-node-1]
-ok: [redis-node-4]
+ok: [redis-node-5]
 ok: [redis-node-2]
 ok: [redis-node-3]
-ok: [redis-node-5]
+ok: [redis-node-4]
 ok: [redis-node-6]
 
 TASK [Delete all persisted Redis data files] ***********************************
-changed: [redis-node-1]
-changed: [redis-node-4]
-changed: [redis-node-3]
 changed: [redis-node-2]
-changed: [redis-node-6]
+changed: [redis-node-1]
 changed: [redis-node-5]
+changed: [redis-node-4]
+changed: [redis-node-6]
+changed: [redis-node-3]
 
 TASK [Recreate Redis data directory] *******************************************
 changed: [redis-node-1]
 changed: [redis-node-2]
+changed: [redis-node-4]
 changed: [redis-node-3]
 changed: [redis-node-6]
 changed: [redis-node-5]
-changed: [redis-node-4]
 
 TASK [Start Redis fresh] *******************************************************
+changed: [redis-node-3]
 changed: [redis-node-1]
 changed: [redis-node-2]
-changed: [redis-node-3]
-changed: [redis-node-4]
-changed: [redis-node-5]
 changed: [redis-node-6]
+changed: [redis-node-5]
+changed: [redis-node-4]
 
 TASK [Wait for Redis to be ready] **********************************************
 ok: [redis-node-1]
+ok: [redis-node-4]
 ok: [redis-node-2]
 ok: [redis-node-3]
-ok: [redis-node-4]
 ok: [redis-node-5]
 ok: [redis-node-6]
 
 TASK [Verify Redis is responding with PONG] ************************************
 ok: [redis-node-1]
-ok: [redis-node-3]
-ok: [redis-node-2]
 ok: [redis-node-4]
-ok: [redis-node-5]
+ok: [redis-node-2]
+ok: [redis-node-3]
 ok: [redis-node-6]
+ok: [redis-node-5]
 
 TASK [Verify node sees itself as standalone (no cluster peers)] ****************
 ok: [redis-node-1]
 ok: [redis-node-2]
-ok: [redis-node-4]
 ok: [redis-node-3]
+ok: [redis-node-4]
 ok: [redis-node-5]
 ok: [redis-node-6]
 
@@ -855,41 +841,41 @@ ok: [redis-node-1] =>
   - Adding replica 10.10.0.15:6379 to 10.10.0.11:6379
   - Adding replica 10.10.0.16:6379 to 10.10.0.12:6379
   - Adding replica 10.10.0.14:6379 to 10.10.0.13:6379
-  - 'M: 625c41e8a2c280ca9495da537670f43bbe00a674 10.10.0.11:6379'
+  - 'M: a402baf798b2d10befb95f5bd49ba4a163fd58cd 10.10.0.11:6379'
   - '   slots:[0-5460] (5461 slots) master'
-  - 'M: 9740c7b91bbab92517e0f748bc3e4f88eca380ab 10.10.0.12:6379'
+  - 'M: 4601d0511584776b34e178f8bf79b7c7142e5935 10.10.0.12:6379'
   - '   slots:[5461-10922] (5462 slots) master'
-  - 'M: 0b063bab3422d29df68c4da1af2b87ad6de108f1 10.10.0.13:6379'
+  - 'M: 56a339a4ab4fcfe119bc959db09117ec57b4f610 10.10.0.13:6379'
   - '   slots:[10923-16383] (5461 slots) master'
-  - 'S: 46270941d355d881cd9d64ad9d9c1390f328046f 10.10.0.14:6379'
-  - '   replicates 0b063bab3422d29df68c4da1af2b87ad6de108f1'
-  - 'S: f5f1335f97932f288141e43bb3427d34aa8a37ed 10.10.0.15:6379'
-  - '   replicates 625c41e8a2c280ca9495da537670f43bbe00a674'
-  - 'S: fb4c3f7b8dd0a0029769f902bee24e60e6ef7be7 10.10.0.16:6379'
-  - '   replicates 9740c7b91bbab92517e0f748bc3e4f88eca380ab'
+  - 'S: da2f1a60ceada2ff5c390cb319c55512e625fe60 10.10.0.14:6379'
+  - '   replicates 56a339a4ab4fcfe119bc959db09117ec57b4f610'
+  - 'S: b7cb3dfe1a09bfc8618cb660554e43d22b911cd9 10.10.0.15:6379'
+  - '   replicates a402baf798b2d10befb95f5bd49ba4a163fd58cd'
+  - 'S: 533457e766c0e37e4a0beda9c1ea14ccf6a6af33 10.10.0.16:6379'
+  - '   replicates 4601d0511584776b34e178f8bf79b7c7142e5935'
   - '>>> Nodes configuration updated'
   - '>>> Assign a different config epoch to each node'
   - '>>> Sending CLUSTER MEET messages to join the cluster'
   - Waiting for the cluster to join
   - .
   - '>>> Performing Cluster Check (using node 10.10.0.11:6379)'
-  - 'M: 625c41e8a2c280ca9495da537670f43bbe00a674 10.10.0.11:6379'
+  - 'M: a402baf798b2d10befb95f5bd49ba4a163fd58cd 10.10.0.11:6379'
   - '   slots:[0-5460] (5461 slots) master'
   - '   1 additional replica(s)'
-  - 'S: fb4c3f7b8dd0a0029769f902bee24e60e6ef7be7 10.10.0.16:6379'
+  - 'S: 533457e766c0e37e4a0beda9c1ea14ccf6a6af33 10.10.0.16:6379'
   - '   slots: (0 slots) slave'
-  - '   replicates 9740c7b91bbab92517e0f748bc3e4f88eca380ab'
-  - 'M: 0b063bab3422d29df68c4da1af2b87ad6de108f1 10.10.0.13:6379'
-  - '   slots:[10923-16383] (5461 slots) master'
-  - '   1 additional replica(s)'
-  - 'S: 46270941d355d881cd9d64ad9d9c1390f328046f 10.10.0.14:6379'
+  - '   replicates 4601d0511584776b34e178f8bf79b7c7142e5935'
+  - 'S: b7cb3dfe1a09bfc8618cb660554e43d22b911cd9 10.10.0.15:6379'
   - '   slots: (0 slots) slave'
-  - '   replicates 0b063bab3422d29df68c4da1af2b87ad6de108f1'
-  - 'S: f5f1335f97932f288141e43bb3427d34aa8a37ed 10.10.0.15:6379'
-  - '   slots: (0 slots) slave'
-  - '   replicates 625c41e8a2c280ca9495da537670f43bbe00a674'
-  - 'M: 9740c7b91bbab92517e0f748bc3e4f88eca380ab 10.10.0.12:6379'
+  - '   replicates a402baf798b2d10befb95f5bd49ba4a163fd58cd'
+  - 'M: 4601d0511584776b34e178f8bf79b7c7142e5935 10.10.0.12:6379'
   - '   slots:[5461-10922] (5462 slots) master'
+  - '   1 additional replica(s)'
+  - 'S: da2f1a60ceada2ff5c390cb319c55512e625fe60 10.10.0.14:6379'
+  - '   slots: (0 slots) slave'
+  - '   replicates 56a339a4ab4fcfe119bc959db09117ec57b4f610'
+  - 'M: 56a339a4ab4fcfe119bc959db09117ec57b4f610 10.10.0.13:6379'
+  - '   slots:[10923-16383] (5461 slots) master'
   - '   1 additional replica(s)'
   - '[OK] All nodes agree about slots configuration.'
   - '>>> Check for open slots...'
@@ -907,12 +893,12 @@ ok: [redis-node-1]
 TASK [Display cluster topology] ************************************************
 ok: [redis-node-1] => 
   msg:
-  - fb4c3f7b8dd0a0029769f902bee24e60e6ef7be7 10.10.0.16:6379@16379 slave 9740c7b91bbab92517e0f748bc3e4f88eca380ab 0 1781622490941 2 connected
-  - 0b063bab3422d29df68c4da1af2b87ad6de108f1 10.10.0.13:6379@16379 master - 0 1781622490533 3 connected 10923-16383
-  - 46270941d355d881cd9d64ad9d9c1390f328046f 10.10.0.14:6379@16379 slave 0b063bab3422d29df68c4da1af2b87ad6de108f1 0 1781622490534 3 connected
-  - f5f1335f97932f288141e43bb3427d34aa8a37ed 10.10.0.15:6379@16379 slave 625c41e8a2c280ca9495da537670f43bbe00a674 0 1781622489931 1 connected
-  - 625c41e8a2c280ca9495da537670f43bbe00a674 10.10.0.11:6379@16379 myself,master - 0 1781622489000 1 connected 0-5460
-  - 9740c7b91bbab92517e0f748bc3e4f88eca380ab 10.10.0.12:6379@16379 master - 0 1781622490534 2 connected 5461-10922
+  - 533457e766c0e37e4a0beda9c1ea14ccf6a6af33 10.10.0.16:6379@16379 slave 4601d0511584776b34e178f8bf79b7c7142e5935 0 1781624506387 2 connected
+  - b7cb3dfe1a09bfc8618cb660554e43d22b911cd9 10.10.0.15:6379@16379 slave a402baf798b2d10befb95f5bd49ba4a163fd58cd 0 1781624505000 1 connected
+  - 4601d0511584776b34e178f8bf79b7c7142e5935 10.10.0.12:6379@16379 master - 0 1781624505383 2 connected 5461-10922
+  - da2f1a60ceada2ff5c390cb319c55512e625fe60 10.10.0.14:6379@16379 slave 56a339a4ab4fcfe119bc959db09117ec57b4f610 0 1781624505886 3 connected
+  - 56a339a4ab4fcfe119bc959db09117ec57b4f610 10.10.0.13:6379@16379 master - 0 1781624506388 3 connected 10923-16383
+  - a402baf798b2d10befb95f5bd49ba4a163fd58cd 10.10.0.11:6379@16379 myself,master - 0 1781624505000 1 connected 0-5460
 
 PLAY RECAP *********************************************************************
 redis-node-1               : ok=40   changed=19   unreachable=0    failed=0    skipped=1    rescued=0    ignored=1   
