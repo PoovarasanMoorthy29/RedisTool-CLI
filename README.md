@@ -69,6 +69,9 @@ pip3 install ansible>=2.14
 
 To facilitate secure, key-based container access without password prompts, the tool's pre-flight check automatically generates a dedicated SSH keypair in the `infra/ssh_keys/` directory (specifically `id_rsa` and `id_rsa.pub`) if they are missing.
 
+> [!IMPORTANT]
+> You must ensure you use your own secure SSH keys. If you wish to use a custom SSH keypair, place your keys in the `infra/ssh_keys/` directory (named `id_rsa` and `id_rsa.pub`) before provisioning the infrastructure.
+
 These key files are used by Ansible to connect securely to the cluster nodes. They are explicitly ignored in `.gitignore` to ensure they are never committed or pushed to Git and GitHub.
 
 ---
