@@ -72,6 +72,32 @@
           print(f"  Failed:  {failed}")
           print(f"  Time:    {elapsed:.2f}s")
           print(f"  Rate:    {success/elapsed:.0f} keys/sec")
+          try:
+              nodes_out = subprocess.run(
+                  [REDIS_CLI, "-h", HOST, "-p", str(PORT), "cluster", "nodes"],
+                  capture_output=True, text=True, timeout=5
+              )
+              distribution = {}
+              for line in nodes_out.stdout.splitlines():
+                  parts = line.split()
+                  if len(parts) >= 8 and "master" in parts[2]:
+                      ip_port = parts[1].split("@")[0]
+                      m_ip = ip_port.rsplit(":", 1)[0]
+                      m_port = ip_port.rsplit(":", 1)[1] if ":" in ip_port else "6379"
+
+                      dbsize_res = subprocess.run(
+                          [REDIS_CLI, "-h", m_ip, "-p", str(m_port), "DBSIZE"],
+                          capture_output=True, text=True, timeout=5
+                      )
+                      if dbsize_res.returncode == 0:
+                          distribution[f"{m_ip}:{m_port}"] = dbsize_res.stdout.strip()
+
+              if distribution:
+                  print("\nDistribution across masters:")
+                  for node, count in sorted(distribution.items()):
+                      print(f"  - {node}: {count} keys")
+          except Exception as e:
+              pass
           print(f"{'='*60}")
 
           if failed > 0:

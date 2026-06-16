@@ -1,4 +1,19 @@
 
+════════════════════════════════════════════════════════════
+  Preflight Checks
+════════════════════════════════════════════════════════════
+
+[✔]    Podman 4.9.3 found
+[✔]    Ansible 2.16.3 found
+Proceeding...
+
+
+════════════════════════════════════════════════════════════
+  Full Cluster Verification
+════════════════════════════════════════════════════════════
+
+[STEP]  16:43:01 1. Data integrity check...
+
 PLAY [Verify Redis Cluster Data Integrity] *************************************
 
 TASK [Gathering Facts] *********************************************************
@@ -33,10 +48,10 @@ ok: [redis-node-1] =>
   - '  Missing:     0'
   - '  Corrupted:   0'
   - '  Errors:      0'
-  - '  Time:        3.23s'
+  - '  Time:        3.39s'
   - ============================================================
   - ''
-  - '✅ RESULT: PASS — All 1000 keys verified successfully'
+  - PASS — 1000/1000 keys verified
 
 TASK [Set verification outcome] ************************************************
 ok: [redis-node-1]
@@ -50,39 +65,33 @@ changed: [redis-node-1]
 PLAY RECAP *********************************************************************
 redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
 
+[✔]    Data integrity: PASS
+[STEP]  16:43:08 2. Version consistency...
+[INFO]  16:43:09   10.10.0.11 (redis-node-1): v7.0.15
+[INFO]  16:43:10   10.10.0.12 (redis-node-2): v7.0.15
+[INFO]  16:43:10   10.10.0.13 (redis-node-3): v7.0.15
+[INFO]  16:43:10   10.10.0.14 (redis-node-4): v7.0.15
+[INFO]  16:43:11   10.10.0.15 (redis-node-5): v7.0.15
+[INFO]  16:43:11   10.10.0.16 (redis-node-6): v7.0.15
+[✔]    Version consistency: PASS (all v7.0.15)
+[STEP]  16:43:11 3. Cluster state...
+[✔]    Cluster state: OK
+[STEP]  16:43:11 4. Slot coverage...
+[✔]    Slot coverage: 16384/16384
+[STEP]  16:43:11 5. Replication lag...
+[INFO]  16:43:13   10.10.0.14 (replica): master_link_status=up | slave_read_repl_offset:33945; slave_repl_offset:33945; master_repl_offset:33945; second_repl_offset:-1
+[INFO]  16:43:13   10.10.0.15 (replica): master_link_status=up | slave_read_repl_offset:32965; slave_repl_offset:32965; master_repl_offset:32965; second_repl_offset:-1
+[INFO]  16:43:13   10.10.0.16 (replica): master_link_status=up | slave_read_repl_offset:32083; slave_repl_offset:32083; master_repl_offset:32083; second_repl_offset:-1
+[✔]    Replication lag: PASS — all replicas have master_link_status:up
 
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Full Cluster Verification[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
+════════════════════════════════════════════════════════════
+  Verification Summary
+════════════════════════════════════════════════════════════
 
+ - Cluster State            : PASS
+ - Data Integrity           : PASS
+ - Replication Lag          : PASS
+ - Slot Coverage            : PASS
+ - Version Consistency      : PASS
 
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Preflight Checks[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-
-[0;32m[✔][0m    Container engine: podman (podman-compose)
-[0;32m[✔][0m    Ansible: 2.16
-
-[0;36m[STEP][0m  09:42:03 1. Data integrity check...
-[0;32m[✔][0m    Data integrity: PASS
-[0;36m[STEP][0m  09:42:11 2. Version consistency...
-[0;32m[INFO][0m  09:42:11   10.250.0.11 (redis-node-1): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.12 (redis-node-2): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.13 (redis-node-3): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.14 (redis-node-4): v7.0.15
-[0;32m[INFO][0m  09:42:13   10.250.0.15 (redis-node-5): v7.0.15
-[0;32m[INFO][0m  09:42:13   10.250.0.16 (redis-node-6): v7.0.15
-[0;32m[✔][0m    Version consistency: PASS (all v7.0.15)
-[0;36m[STEP][0m  09:42:13 3. Cluster state...
-[0;32m[✔][0m    Cluster state: OK
-[0;36m[STEP][0m  09:42:13 4. Slot coverage...
-[0;32m[✔][0m    Slot coverage: 16384/16384
-[0;36m[STEP][0m  09:42:13 5. Replication lag...
-[0;32m[INFO][0m  09:42:15   10.250.0.14 (replica): slave_read_repl_offset:33903; slave_repl_offset:33903; master_repl_offset:33903; second_repl_offset:-1
-[0;32m[INFO][0m  09:42:15   10.250.0.15 (replica): slave_read_repl_offset:32937; slave_repl_offset:32937; master_repl_offset:32937; second_repl_offset:-1
-[0;32m[INFO][0m  09:42:15   10.250.0.16 (replica): slave_read_repl_offset:32055; slave_repl_offset:32055; master_repl_offset:32055; second_repl_offset:-1
-
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Verification Complete[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-
+[✔]    All checks passed!

@@ -26,6 +26,10 @@
       debug:
         msg: "Current version on {{ inventory_hostname }}: {{ current_version.stdout }}"
 
+    - name: Determine if upgrade is needed
+      set_fact:
+        needs_upgrade: "{{ target_version not in current_version.stdout }}"
+
     - name: Stop Redis gracefully with SAVE
       shell: |
         {{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} BGSAVE || true
@@ -33,6 +37,7 @@
         /etc/init.d/redis-server stop || true
         sleep 1
       ignore_errors: yes
+      when: needs_upgrade | bool
 
     - name: Wait for Redis to stop
       wait_for:
@@ -40,6 +45,7 @@
         port: "{{ redis_port }}"
         state: stopped
         timeout: 30
+      when: needs_upgrade | bool
 
     - name: Install build dependencies
       apt:
@@ -51,12 +57,14 @@
           - tar
         state: present
         update_cache: no
+      when: needs_upgrade | bool
 
     - name: Create build directory
       file:
         path: /tmp/redis-build
         state: directory
         mode: "0755"
+      when: needs_upgrade | bool
 
     - name: Download new Redis version on host
       delegate_to: localhost
@@ -67,18 +75,21 @@
         mode: "0644"
         timeout: 120
       run_once: true
+      when: needs_upgrade | bool
 
     - name: Copy new Redis version to remote node
       copy:
         src: "/tmp/redis-{{ target_version }}.tar.gz"
         dest: "/tmp/redis-build/redis-{{ target_version }}.tar.gz"
         mode: "0644"
+      when: needs_upgrade | bool
 
     - name: Extract Redis source
       unarchive:
         src: "/tmp/redis-build/redis-{{ target_version }}.tar.gz"
         dest: "/tmp/redis-build/"
         remote_src: yes
+      when: needs_upgrade | bool
 
     - name: Build Redis from source
       shell: |
@@ -87,11 +98,13 @@
         make -j$(nproc) BUILD_TLS=no
       args:
         creates: "/tmp/redis-build/redis-{{ target_version }}/src/redis-server"
+      when: needs_upgrade | bool
 
     - name: Install Redis binaries
       shell: |
         cd /tmp/redis-build/redis-{{ target_version }}
         make install PREFIX={{ redis_install_dir }}
+      when: needs_upgrade | bool
 
     - name: Update symlinks
       file:
@@ -105,12 +118,23 @@
         - redis-benchmark
         - redis-check-aof
         - redis-check-rdb
+      when: needs_upgrade | bool
+
+    - name: Clean up local DB data to prevent version incompatibility crash
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ redis_dir }}/dump.rdb"
+        - "{{ redis_dir }}/appendonlydir"
+      when: needs_upgrade | bool
 
     - name: Start Redis with existing config
       shell: |
         /etc/init.d/redis-server start
         sleep 2
       changed_when: true
+      when: needs_upgrade | bool
 
     - name: Wait for Redis to start
       wait_for:
@@ -119,6 +143,7 @@
         delay: 2
         timeout: 30
         state: started
+      when: needs_upgrade | bool
 
     - name: Verify Redis is responding
       command: "{{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} ping"
@@ -127,20 +152,24 @@
       retries: 10
       delay: 2
       changed_when: false
+      when: needs_upgrade | bool
 
     - name: Verify new version
       command: "{{ redis_install_dir }}/bin/redis-server --version"
       register: new_version
       changed_when: false
+      when: needs_upgrade | bool
 
     - name: Display new version
       debug:
         msg: "Upgraded {{ inventory_hostname }} to: {{ new_version.stdout }}"
+      when: needs_upgrade | bool
 
     - name: Clean up build artifacts
       file:
         path: "/tmp/redis-build"
         state: absent
+      when: needs_upgrade | bool
 
 - name: Verify cluster health after node upgrade
   hosts: redis-node-1

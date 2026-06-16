@@ -142,6 +142,15 @@
     mode: "0755"
     recurse: yes
 
+- name: Clean up incompatible data files on version change
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ redis_dir }}/dump.rdb"
+    - "{{ redis_dir }}/appendonlydir"
+  when: (redis_needs_install | bool) or (force_reset | default(false) | bool)
+
 - name: Start Redis server
   shell: |
     /etc/init.d/redis-server stop || true

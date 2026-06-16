@@ -1,112 +1,25 @@
 
-PLAY [Redis Cluster Status] ****************************************************
+════════════════════════════════════════════════════════════
+  Preflight Checks
+════════════════════════════════════════════════════════════
 
-TASK [Gathering Facts] *********************************************************
-ok: [redis-node-1]
-
-TASK [Get cluster info] ********************************************************
-ok: [redis-node-1]
-
-TASK [Get cluster nodes] *******************************************************
-ok: [redis-node-1]
-
-TASK [Display cluster info] ****************************************************
-ok: [redis-node-1] => 
-  msg:
-  - cluster_state:ok
-  - cluster_slots_assigned:16384
-  - cluster_slots_ok:16384
-  - cluster_slots_pfail:0
-  - cluster_slots_fail:0
-  - cluster_known_nodes:6
-  - cluster_size:3
-  - cluster_current_epoch:6
-  - cluster_my_epoch:1
-  - cluster_stats_messages_ping_sent:253
-  - cluster_stats_messages_pong_sent:246
-  - cluster_stats_messages_sent:499
-  - cluster_stats_messages_ping_received:246
-  - cluster_stats_messages_pong_received:253
-  - cluster_stats_messages_received:499
-  - total_cluster_links_buffer_limit_exceeded:0
-
-TASK [Display cluster topology] ************************************************
-ok: [redis-node-1] => 
-  msg:
-  - 929b9ee874ee235f8d4e1b339ab51dc3c048a788 10.250.0.15:6379@16379 slave b27a438e362aab264f4b80d88305c3e47dc73cd9 0 1781583074606 1 connected
-  - 3b2899a1b1cd7c4c988074d3766093727bc7a39e 10.250.0.12:6379@16379 master - 0 1781583073603 2 connected 5461-10922
-  - b27a438e362aab264f4b80d88305c3e47dc73cd9 10.250.0.11:6379@16379 myself,master - 0 1781583073000 1 connected 0-5460
-  - 811cea434e3f5f74c343849293f87d422ce4d575 10.250.0.13:6379@16379 master - 0 1781583073100 3 connected 10923-16383
-  - d12a4bf27e02f3b352b6ae151ce94e72c0c96bed 10.250.0.16:6379@16379 slave 3b2899a1b1cd7c4c988074d3766093727bc7a39e 0 1781583075000 2 connected
-  - 81cbc720278913201bc8341927bea4263b76dd89 10.250.0.14:6379@16379 slave 811cea434e3f5f74c343849293f87d422ce4d575 0 1781583075108 3 connected
-
-TASK [Get info for each node] **************************************************
-ok: [redis-node-1]
-
-TASK [Display node details] ****************************************************
-ok: [redis-node-1] => 
-  msg:
-  - === Node 10.250.0.11 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:134
-  - used_memory_human:1.87M
-  - maxmemory_human:256.00M
-  - db0:keys=333,expires=0,avg_ttl=0
-  - '333'
-  - ''
-  - === Node 10.250.0.12 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:134
-  - used_memory_human:1.85M
-  - maxmemory_human:256.00M
-  - db0:keys=324,expires=0,avg_ttl=0
-  - '324'
-  - ''
-  - === Node 10.250.0.13 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:135
-  - used_memory_human:1.85M
-  - maxmemory_human:256.00M
-  - db0:keys=343,expires=0,avg_ttl=0
-  - '343'
-  - ''
-  - === Node 10.250.0.14 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:135
-  - used_memory_human:1.78M
-  - maxmemory_human:256.00M
-  - db0:keys=343,expires=0,avg_ttl=0
-  - '343'
-  - ''
-  - === Node 10.250.0.15 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:135
-  - used_memory_human:1.78M
-  - maxmemory_human:256.00M
-  - db0:keys=333,expires=0,avg_ttl=0
-  - '333'
-  - ''
-  - === Node 10.250.0.16 ===
-  - redis_version:7.0.15
-  - uptime_in_seconds:135
-  - used_memory_human:1.78M
-  - maxmemory_human:256.00M
-  - db0:keys=324,expires=0,avg_ttl=0
-  - '324'
-
-PLAY RECAP *********************************************************************
-redis-node-1               : ok=7    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+[✔]    Podman 4.9.3 found
+[✔]    Ansible 2.16.3 found
+Proceeding...
 
 
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Redis Cluster Status[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
+════════════════════════════════════════════════════════════
+  Redis Cluster Status
+════════════════════════════════════════════════════════════
 
+Cluster State: ok
 
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Preflight Checks[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
+MASTERS
+ 10.10.0.11:6379  [master]  v7.0.15  slots: 0-5460      keys: 333  mem: 1.94M
+ 10.10.0.12:6379  [master]  v7.0.15  slots: 5461-10922  keys: 324  mem: 1.96M
+ 10.10.0.13:6379  [master]  v7.0.15  slots: 10923-16383 keys: 343  mem: 1.97M
 
-[0;32m[✔][0m    Container engine: podman (podman-compose)
-[0;32m[✔][0m    Ansible: 2.16
-
+REPLICAS
+ 10.10.0.14:6379  [replica] v7.0.15  replicating: 10.10.0.13:6379 mem: 1.91M
+ 10.10.0.15:6379  [replica] v7.0.15  replicating: 10.10.0.11:6379 mem: 1.90M
+ 10.10.0.16:6379  [replica] v7.0.15  replicating: 10.10.0.12:6379 mem: 1.90M

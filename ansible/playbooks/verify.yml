@@ -90,10 +90,10 @@
                   print(f"  {err}")
 
           if total_issues == 0:
-              print(f"\n✅ RESULT: PASS — All {passed} keys verified successfully")
+              print(f"\nPASS — {passed}/{NUM_KEYS} keys verified")
               sys.exit(0)
           else:
-              print(f"\n❌ RESULT: FAIL — {total_issues} issues found")
+              print(f"\nFAIL — {missing} keys missing, {corrupted} values mismatched")
               sys.exit(1)
 
     - name: Run verification script

@@ -4,7 +4,7 @@
 # Usage: ansible-playbook playbooks/provision.yml -e "redis_version=7.0.15"
 
 - name: Provision Redis Cluster Nodes
-  hosts: redis_cluster
+  hosts: "{{ target_hosts | default('redis_cluster') }}"
   become: yes
   vars:
     redis_version: "{{ redis_version_override | default('7.0.15') }}"
@@ -14,7 +14,7 @@
         redis_version: "{{ redis_version_override | default('7.0.15') }}"
 
 - name: Prepare Nodes for Cluster Formation
-  hosts: redis_cluster
+  hosts: "{{ target_hosts | default('redis_cluster') }}"
   become: yes
   tasks:
     - name: Check if this node is already in a cluster
@@ -29,12 +29,12 @@
 
     - name: Stop Redis for reset (when not already in a healthy cluster)
       shell: /etc/init.d/redis-server stop || true
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
       ignore_errors: true
 
     - name: Kill any remaining Redis processes
       shell: pkill -9 -f redis-server || true
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
       ignore_errors: true
 
     - name: Wait for Redis port to be free
@@ -42,14 +42,14 @@
         port: 6379
         state: stopped
         timeout: 10
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
       ignore_errors: true
 
     - name: Delete all persisted Redis data files
       file:
         path: /var/lib/redis
         state: absent
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
 
     - name: Recreate Redis data directory
       file:
@@ -58,11 +58,11 @@
         owner: redis
         group: redis
         mode: '0750'
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
 
     - name: Start Redis fresh
       shell: /etc/init.d/redis-server start
-      when: not node_in_cluster | bool
+      when: (force_reset | default(false) | bool) or (not node_in_cluster | bool)
 
     - name: Wait for Redis to be ready
       wait_for:
@@ -103,12 +103,9 @@
     - name: Form Redis Cluster
       shell: |
         /opt/redis/bin/redis-cli --cluster create \
-          10.250.0.11:6379 \
-          10.250.0.12:6379 \
-          10.250.0.13:6379 \
-          10.250.0.14:6379 \
-          10.250.0.15:6379 \
-          10.250.0.16:6379 \
+          {% for host in groups['redis_masters'] + groups['redis_replicas'] %}
+          {{ hostvars[host]['redis_node_ip'] }}:{{ hostvars[host]['redis_port'] | default(6379) }} \
+          {% endfor %}
           --cluster-replicas {{ replicas_per_master }} --cluster-yes
       register: cluster_create_result
       when: "'cluster_state:ok' not in pre_cluster_check.stdout"

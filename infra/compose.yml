@@ -1,18 +1,18 @@
 ---
 # Redis Cluster Infrastructure
 # 6 Ubuntu containers (3 masters + 3 replicas) with SSH access
-# Static IPs: 10.250.0.11 - 10.250.0.16
+# Static IPs: 10.10.0.11 - 10.10.0.18
 
 services:
   redis-node-1:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-1
     hostname: redis-node-1
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.11
+        ipv4_address: 10.10.0.11
     ports:
       - "2211:22"
       - "7001:6379"
@@ -27,12 +27,12 @@ services:
   redis-node-2:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-2
     hostname: redis-node-2
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.12
+        ipv4_address: 10.10.0.12
     ports:
       - "2212:22"
       - "7002:6379"
@@ -47,12 +47,12 @@ services:
   redis-node-3:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-3
     hostname: redis-node-3
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.13
+        ipv4_address: 10.10.0.13
     ports:
       - "2213:22"
       - "7003:6379"
@@ -67,12 +67,12 @@ services:
   redis-node-4:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-4
     hostname: redis-node-4
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.14
+        ipv4_address: 10.10.0.14
     ports:
       - "2214:22"
       - "7004:6379"
@@ -87,12 +87,12 @@ services:
   redis-node-5:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-5
     hostname: redis-node-5
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.15
+        ipv4_address: 10.10.0.15
     ports:
       - "2215:22"
       - "7005:6379"
@@ -107,12 +107,12 @@ services:
   redis-node-6:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Containerfile
     container_name: redis-node-6
     hostname: redis-node-6
     networks:
       redis-cluster-net:
-        ipv4_address: 10.250.0.16
+        ipv4_address: 10.10.0.16
     ports:
       - "2216:22"
       - "7006:6379"
@@ -124,13 +124,53 @@ services:
     cap_add:
       - SYS_PTRACE
 
+  redis-node-7:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: redis-node-7
+    hostname: redis-node-7
+    networks:
+      redis-cluster-net:
+        ipv4_address: 10.10.0.17
+    ports:
+      - "2207:22"
+      - "7007:6379"
+      - "17007:16379"
+    volumes:
+      - redis-data-7:/data
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+
+  redis-node-8:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: redis-node-8
+    hostname: redis-node-8
+    networks:
+      redis-cluster-net:
+        ipv4_address: 10.10.0.18
+    ports:
+      - "2208:22"
+      - "7008:6379"
+      - "17008:16379"
+    volumes:
+      - redis-data-8:/data
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+
 networks:
   redis-cluster-net:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.250.0.0/24
-          gateway: 10.250.0.1
+        - subnet: 10.10.0.0/24
+          gateway: 10.10.0.1
 
 volumes:
   redis-data-1:
@@ -139,3 +179,5 @@ volumes:
   redis-data-4:
   redis-data-5:
   redis-data-6:
+  redis-data-7:
+  redis-data-8:

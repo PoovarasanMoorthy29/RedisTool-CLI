@@ -30,7 +30,7 @@
 
     - name: Get info for each node
       shell: |
-        for ip in 10.250.0.11 10.250.0.12 10.250.0.13 10.250.0.14 10.250.0.15 10.250.0.16; do
+        for ip in {% for host in groups['redis_cluster'] %}{{ hostvars[host]['redis_node_ip'] }} {% endfor %}; do
           echo "=== Node $ip ==="
           {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} INFO server 2>/dev/null | grep -E "(redis_version|uptime_in_seconds|role)" || echo "UNREACHABLE"
           {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} INFO memory 2>/dev/null | grep -E "(used_memory_human|maxmemory_human)" || true
