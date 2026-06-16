@@ -55,6 +55,8 @@ IP_TO_NAME = {v: k for k, v in NODES.items()}
 for d in (OUTPUT_DIR, LOG_DIR):
     os.makedirs(d, exist_ok=True)
 
+SEED_COUNT_FILE = os.path.join(OUTPUT_DIR, "last_seed_count.txt")
+
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 YELLOW = "\033[1;33m"
@@ -316,16 +318,39 @@ def cmd_status(_args):
     run_playbook("status.yml")
 
 
+def write_seed_count(count):
+    try:
+        with open(SEED_COUNT_FILE, "w") as f:
+            f.write(str(count))
+    except OSError:
+        log_warn("Unable to persist seed key count")
+
+
+def read_seed_count():
+    if not os.path.exists(SEED_COUNT_FILE):
+        return None
+    try:
+        with open(SEED_COUNT_FILE, "r") as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
 def cmd_data_seed(args):
     header(f"Seeding {args.keys} Keys")
     preflight()
     run_playbook("seed.yml", extra_vars={"num_keys": str(args.keys)})
+    write_seed_count(args.keys)
 
 
 def cmd_data_verify(args):
-    header("Verifying Data Integrity")
+    seed_count = args.keys
+    if seed_count is None:
+        seed_count = read_seed_count() or 1000
+        log_info(f"No --keys provided; using last seeded count: {seed_count}")
+    header(f"Verifying Data Integrity ({seed_count} keys)")
     preflight()
-    run_playbook("verify.yml", extra_vars={"num_keys": str(args.keys)})
+    run_playbook("verify.yml", extra_vars={"num_keys": str(seed_count)})
 
 def cmd_upgrade(args):
     target = args.target_version
@@ -492,7 +517,7 @@ def main():
     p.add_argument("--keys", type=int, default=1000)
     p.set_defaults(func=cmd_data_seed)
     p = ds.add_parser("verify", help="Verify data integrity")
-    p.add_argument("--keys", type=int, default=1000)
+    p.add_argument("--keys", type=int, default=None)
     p.set_defaults(func=cmd_data_verify)
 
     p = sub.add_parser("upgrade", help="Rolling upgrade")
