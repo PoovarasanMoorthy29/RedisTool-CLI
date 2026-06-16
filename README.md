@@ -190,7 +190,3 @@ RedisTool-CLI/
 ```
 
 ---
-
-## 8. License
-
-MIT
