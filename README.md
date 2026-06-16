@@ -40,13 +40,13 @@ A CLI tool that provisions, operates, and performs **zero-downtime rolling upgra
           ┌────────────┼────────────────┐
           ▼            ▼                ▼
    ┌────────────┬────────────┬────────────┐
-   │redis-node-1│redis-node-2│redis-node-3│  Masters
-   │ 10.10.0.11 │ 10.10.0.12│ 10.10.0.13 │
+      │redis-node-1│redis-node-2│redis-node-3│  Masters
+      │ 10.250.0.11 │ 10.250.0.12│ 10.250.0.13 │
    ├────────────┼────────────┼────────────┤
-   │redis-node-4│redis-node-5│redis-node-6│  Replicas
-   │ 10.10.0.14 │ 10.10.0.15│ 10.10.0.16 │
+      │redis-node-4│redis-node-5│redis-node-6│  Replicas
+      │ 10.250.0.14 │ 10.250.0.15│ 10.250.0.16 │
    └────────────┴────────────┴────────────┘
-         Docker/Podman containers on 10.10.0.0/24
+         Docker/Podman containers on 10.250.0.0/24
 ```
 
 ---
@@ -216,7 +216,7 @@ RedisTool-CLI/
 ├── ansible/
 │   ├── ansible.cfg               ← Ansible configuration
 │   ├── inventory/
-│   │   └── hosts.ini             ← 6 fixed IPs (10.10.0.11–16)
+│   │   └── hosts.ini             ← 6 fixed IPs (10.250.0.11–16)
 │   ├── playbooks/
 │   │   ├── provision.yml         ← Install Redis + form cluster
 │   │   ├── upgrade.yml           ← Upgrade single node

@@ -11,7 +11,7 @@ redis_dir: "/var/lib/redis"
 redis_log_dir: "/var/log/redis"
 redis_log_file: "/var/log/redis/redis-server.log"
 redis_pid_file: "/var/run/redis/redis-server.pid"
-redis_daemonize: "no"
+redis_daemonize: "yes"
 redis_maxmemory: "256mb"
 redis_maxmemory_policy: "noeviction"
 redis_cluster_bus_port: 16379

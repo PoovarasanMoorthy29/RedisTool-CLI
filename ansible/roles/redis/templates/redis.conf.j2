@@ -11,7 +11,7 @@ timeout 0
 tcp-keepalive 300
 
 # General
-daemonize yes
+daemonize {{ redis_daemonize }}
 pidfile {{ redis_pid_file }}
 loglevel notice
 logfile {{ redis_log_file }}

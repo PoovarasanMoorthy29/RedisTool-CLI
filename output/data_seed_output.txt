@@ -1,4 +1,62 @@
 
+PLAY [Seed Redis Cluster Data] *************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-1]
+
+TASK [Ensure python3-hashlib is available] *************************************
+ok: [redis-node-1]
+
+TASK [Create seed script] ******************************************************
+changed: [redis-node-1]
+
+TASK [Run seed script] *********************************************************
+changed: [redis-node-1]
+
+TASK [Display seed results] ****************************************************
+ok: [redis-node-1] => 
+  msg:
+  - Seeding 1000 deterministic keys into Redis Cluster...
+  - '  Progress: 100/1000 keys inserted...'
+  - '  Progress: 200/1000 keys inserted...'
+  - '  Progress: 300/1000 keys inserted...'
+  - '  Progress: 400/1000 keys inserted...'
+  - '  Progress: 500/1000 keys inserted...'
+  - '  Progress: 600/1000 keys inserted...'
+  - '  Progress: 700/1000 keys inserted...'
+  - '  Progress: 800/1000 keys inserted...'
+  - '  Progress: 900/1000 keys inserted...'
+  - '  Progress: 1000/1000 keys inserted...'
+  - ''
+  - ============================================================
+  - Seed Complete
+  - '  Total:   1000'
+  - '  Success: 1000'
+  - '  Failed:  0'
+  - '  Time:    3.11s'
+  - '  Rate:    321 keys/sec'
+  - ============================================================
+
+TASK [Clean up seed script] ****************************************************
+changed: [redis-node-1]
+
+PLAY RECAP *********************************************************************
+redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+[1m[0;34m  Seeding 1000 Keys[0m
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+
+
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+[1m[0;34m  Preflight Checks[0m
+[1m[0;34m════════════════════════════════════════════════════════════[0m
+
+[0;32m[✔][0m    Container engine: podman (podman-compose)
+[0;32m[✔][0m    Ansible: 2.16
+
+
 PLAY [Verify Redis Cluster Data Integrity] *************************************
 
 TASK [Gathering Facts] *********************************************************
@@ -33,7 +91,7 @@ ok: [redis-node-1] =>
   - '  Missing:     0'
   - '  Corrupted:   0'
   - '  Errors:      0'
-  - '  Time:        3.23s'
+  - '  Time:        3.55s'
   - ============================================================
   - ''
   - '✅ RESULT: PASS — All 1000 keys verified successfully'
@@ -52,7 +110,7 @@ redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    s
 
 
 [1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Full Cluster Verification[0m
+[1m[0;34m  Verifying Data Integrity[0m
 [1m[0;34m════════════════════════════════════════════════════════════[0m
 
 
@@ -62,27 +120,4 @@ redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    s
 
 [0;32m[✔][0m    Container engine: podman (podman-compose)
 [0;32m[✔][0m    Ansible: 2.16
-
-[0;36m[STEP][0m  09:42:03 1. Data integrity check...
-[0;32m[✔][0m    Data integrity: PASS
-[0;36m[STEP][0m  09:42:11 2. Version consistency...
-[0;32m[INFO][0m  09:42:11   10.250.0.11 (redis-node-1): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.12 (redis-node-2): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.13 (redis-node-3): v7.0.15
-[0;32m[INFO][0m  09:42:12   10.250.0.14 (redis-node-4): v7.0.15
-[0;32m[INFO][0m  09:42:13   10.250.0.15 (redis-node-5): v7.0.15
-[0;32m[INFO][0m  09:42:13   10.250.0.16 (redis-node-6): v7.0.15
-[0;32m[✔][0m    Version consistency: PASS (all v7.0.15)
-[0;36m[STEP][0m  09:42:13 3. Cluster state...
-[0;32m[✔][0m    Cluster state: OK
-[0;36m[STEP][0m  09:42:13 4. Slot coverage...
-[0;32m[✔][0m    Slot coverage: 16384/16384
-[0;36m[STEP][0m  09:42:13 5. Replication lag...
-[0;32m[INFO][0m  09:42:15   10.250.0.14 (replica): slave_read_repl_offset:33903; slave_repl_offset:33903; master_repl_offset:33903; second_repl_offset:-1
-[0;32m[INFO][0m  09:42:15   10.250.0.15 (replica): slave_read_repl_offset:32937; slave_repl_offset:32937; master_repl_offset:32937; second_repl_offset:-1
-[0;32m[INFO][0m  09:42:15   10.250.0.16 (replica): slave_read_repl_offset:32055; slave_repl_offset:32055; master_repl_offset:32055; second_repl_offset:-1
-
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Verification Complete[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
 

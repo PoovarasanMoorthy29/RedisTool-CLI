@@ -148,6 +148,7 @@ def ssh_cmd(ip, remote_cmd):
     full = (
         f"ssh -i {SSH_KEY} -p {port} -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 "
+        f"-o LogLevel=ERROR "
         f'ansible@127.0.0.1 "sudo {remote_cmd}"'
     )
     r = run(full, check=False)
@@ -157,7 +158,10 @@ def ssh_cmd(ip, remote_cmd):
 def redis_cli(ip, redis_cmd, port=6379):
     """Execute redis-cli on a remote node, return stdout."""
     out, _ = ssh_cmd(ip, f"/opt/redis/bin/redis-cli -h 127.0.0.1 -p {port} {redis_cmd}")
-    return out
+    if not out:
+        return ""
+    lines = [line for line in out.splitlines() if not line.startswith("Warning:")]
+    return "\n".join(lines).strip()
 
 
 # ═══════════════════════════════════════════════════════════════════
