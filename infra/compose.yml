@@ -124,46 +124,6 @@ services:
     cap_add:
       - SYS_PTRACE
 
-  redis-node-7:
-    build:
-      context: .
-      dockerfile: Containerfile
-    container_name: redis-node-7
-    hostname: redis-node-7
-    networks:
-      redis-cluster-net:
-        ipv4_address: 10.10.0.17
-    ports:
-      - "2207:22"
-      - "7007:6379"
-      - "17007:16379"
-    volumes:
-      - redis-data-7:/data
-    restart: unless-stopped
-    privileged: true
-    cap_add:
-      - SYS_PTRACE
-
-  redis-node-8:
-    build:
-      context: .
-      dockerfile: Containerfile
-    container_name: redis-node-8
-    hostname: redis-node-8
-    networks:
-      redis-cluster-net:
-        ipv4_address: 10.10.0.18
-    ports:
-      - "2208:22"
-      - "7008:6379"
-      - "17008:16379"
-    volumes:
-      - redis-data-8:/data
-    restart: unless-stopped
-    privileged: true
-    cap_add:
-      - SYS_PTRACE
-
 networks:
   redis-cluster-net:
     driver: bridge
@@ -179,5 +139,3 @@ volumes:
   redis-data-4:
   redis-data-5:
   redis-data-6:
-  redis-data-7:
-  redis-data-8:

@@ -42,13 +42,11 @@ NODES = {
     "redis-node-4": "10.10.0.14",
     "redis-node-5": "10.10.0.15",
     "redis-node-6": "10.10.0.16",
-    "redis-node-7": "10.10.0.17",
-    "redis-node-8": "10.10.0.18",
 }
 BASE_NODE_NAMES = [f"redis-node-{i}" for i in range(1, 7)]
-SCALE_NODE_NAMES = ["redis-node-7", "redis-node-8"]
+SCALE_NODE_NAMES = []
 BASE_IPS = [NODES[name] for name in BASE_NODE_NAMES]
-SCALE_IPS = [NODES[name] for name in SCALE_NODE_NAMES]
+SCALE_IPS = []
 SSH_PORTS = {
     "10.10.0.11": 2211,
     "10.10.0.12": 2212,
@@ -56,8 +54,6 @@ SSH_PORTS = {
     "10.10.0.14": 2214,
     "10.10.0.15": 2215,
     "10.10.0.16": 2216,
-    "10.10.0.17": 2207,
-    "10.10.0.18": 2208,
 }
 ALL_IPS = list(NODES.values())
 IP_TO_NAME = {v: k for k, v in NODES.items()}
@@ -640,6 +636,8 @@ def cmd_scale(args):
     preflight(getattr(args, 'auto_install', False))
 
     if args.add_nodes:
+        if not SCALE_NODE_NAMES:
+            abort("Scaling nodes (node 7 and 8) are not defined/configured in composition configurations.")
         if args.add_nodes != 2:
             abort("Currently only supports adding exactly 2 nodes (1M + 1R)")
 

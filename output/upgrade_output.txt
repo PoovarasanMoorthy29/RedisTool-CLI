@@ -12,7 +12,7 @@ Proceeding...
   Rolling Upgrade to Redis 7.2.6
 ════════════════════════════════════════════════════════════
 
-[STEP]  20:42:11 Step 1/5: Pre-flight health checks...
+[STEP]  21:17:44 Step 1/5: Pre-flight health checks...
 [✔]    Cluster state: ok
 [✔]    Node 10.10.0.11: reachable
 [✔]    Node 10.10.0.12: reachable
@@ -20,7 +20,7 @@ Proceeding...
 [✔]    Node 10.10.0.14: reachable
 [✔]    Node 10.10.0.15: reachable
 [✔]    Node 10.10.0.16: reachable
-[STEP]  20:42:15 Baseline data verification...
+[STEP]  21:17:49 Baseline data verification...
 
 PLAY [Verify Redis Cluster Data Integrity] *************************************
 
@@ -56,7 +56,7 @@ ok: [redis-node-1] =>
   - '  Missing:     0'
   - '  Corrupted:   0'
   - '  Errors:      0'
-  - '  Time:        3.26s'
+  - '  Time:        3.37s'
   - ============================================================
   - ''
   - PASS — 1000/1000 keys verified
@@ -74,11 +74,11 @@ PLAY RECAP *********************************************************************
 redis-node-1               : ok=6    changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
 
 [✔]    Baseline data: intact
-[STEP]  20:42:23 Step 2/5: Discovering cluster topology...
-[INFO]  20:42:24 Masters:  redis-node-3, redis-node-1, redis-node-2
-[INFO]  20:42:24 Replicas: redis-node-6, redis-node-4, redis-node-5
-[STEP]  20:42:24 Step 3/5: Upgrading replicas...
-[STEP]  20:42:24 Upgrading replica redis-node-6 (10.10.0.16)...
+[STEP]  21:17:58 Step 2/5: Discovering cluster topology...
+[INFO]  21:17:58 Masters:  redis-node-2, redis-node-3, redis-node-1
+[INFO]  21:17:58 Replicas: redis-node-6, redis-node-5, redis-node-4
+[STEP]  21:17:58 Step 3/5: Upgrading replicas...
+[STEP]  21:17:58 Upgrading replica redis-node-6 (10.10.0.16)...
 
 PLAY [Upgrade Single Redis Node] ***********************************************
 
@@ -90,7 +90,7 @@ ok: [redis-node-6]
 
 TASK [Display current version] *************************************************
 ok: [redis-node-6] => 
-  msg: 'Current version on redis-node-6: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=f77a171fc311d319'
+  msg: 'Current version on redis-node-6: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=d75750a5a5f00263'
 
 TASK [Determine if upgrade is needed] ******************************************
 ok: [redis-node-6]
@@ -147,7 +147,7 @@ ok: [redis-node-6]
 
 TASK [Display new version] *****************************************************
 ok: [redis-node-6] => 
-  msg: 'Upgraded redis-node-6 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=68805dbcaaea3787'
+  msg: 'Upgraded redis-node-6 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b9606b92656dcd40'
 
 TASK [Clean up build artifacts] ************************************************
 changed: [redis-node-6]
@@ -168,107 +168,12 @@ PLAY RECAP *********************************************************************
 redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 redis-node-6               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 
-[STEP]  20:44:41 Waiting for replica 10.10.0.16 to synchronize (master_link_status:up)...
+[STEP]  21:20:18 Waiting for replica 10.10.0.16 to synchronize (master_link_status:up)...
 [✔]    Replica 10.10.0.16 is fully synchronized.
 [✔]    Cluster healthy after upgrading redis-node-6
 [1/6] Upgraded replica 10.10.0.16 — cluster: ok
 [✔]    Replica redis-node-6 upgraded
-[STEP]  20:44:41 Upgrading replica redis-node-4 (10.10.0.14)...
-
-PLAY [Upgrade Single Redis Node] ***********************************************
-
-TASK [Gathering Facts] *********************************************************
-ok: [redis-node-4]
-
-TASK [Check current Redis version] *********************************************
-ok: [redis-node-4]
-
-TASK [Display current version] *************************************************
-ok: [redis-node-4] => 
-  msg: 'Current version on redis-node-4: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=43d02f000aa4cf7a'
-
-TASK [Determine if upgrade is needed] ******************************************
-ok: [redis-node-4]
-
-TASK [Stop Redis gracefully with SAVE] *****************************************
-changed: [redis-node-4]
-
-TASK [Wait for Redis to stop] **************************************************
-ok: [redis-node-4]
-
-TASK [Install build dependencies] **********************************************
-ok: [redis-node-4]
-
-TASK [Create build directory] **************************************************
-changed: [redis-node-4]
-
-TASK [Download new Redis version on host] **************************************
-ok: [redis-node-4 -> localhost]
-
-TASK [Copy new Redis version to remote node] ***********************************
-changed: [redis-node-4]
-
-TASK [Extract Redis source] ****************************************************
-changed: [redis-node-4]
-
-TASK [Build Redis from source] *************************************************
-changed: [redis-node-4]
-
-TASK [Install Redis binaries] **************************************************
-changed: [redis-node-4]
-
-TASK [Update symlinks] *********************************************************
-ok: [redis-node-4] => (item=redis-server)
-ok: [redis-node-4] => (item=redis-cli)
-ok: [redis-node-4] => (item=redis-benchmark)
-ok: [redis-node-4] => (item=redis-check-aof)
-ok: [redis-node-4] => (item=redis-check-rdb)
-
-TASK [Clean up local DB data to prevent version incompatibility crash] *********
-changed: [redis-node-4] => (item=/var/lib/redis/dump.rdb)
-changed: [redis-node-4] => (item=/var/lib/redis/appendonlydir)
-
-TASK [Start Redis with existing config] ****************************************
-changed: [redis-node-4]
-
-TASK [Wait for Redis to start] *************************************************
-ok: [redis-node-4]
-
-TASK [Verify Redis is responding] **********************************************
-ok: [redis-node-4]
-
-TASK [Verify new version] ******************************************************
-ok: [redis-node-4]
-
-TASK [Display new version] *****************************************************
-ok: [redis-node-4] => 
-  msg: 'Upgraded redis-node-4 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=24377195cefb5be9'
-
-TASK [Clean up build artifacts] ************************************************
-changed: [redis-node-4]
-
-PLAY [Verify cluster health after node upgrade] ********************************
-
-TASK [Gathering Facts] *********************************************************
-ok: [redis-node-1]
-
-TASK [Wait for cluster to reconverge] ******************************************
-ok: [redis-node-1]
-
-TASK [Display cluster state] ***************************************************
-ok: [redis-node-1] => 
-  msg: 'Cluster state after upgrading redis-node-4: cluster_state:ok'
-
-PLAY RECAP *********************************************************************
-redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-redis-node-4               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-
-[STEP]  20:46:57 Waiting for replica 10.10.0.14 to synchronize (master_link_status:up)...
-[✔]    Replica 10.10.0.14 is fully synchronized.
-[✔]    Cluster healthy after upgrading redis-node-4
-[2/6] Upgraded replica 10.10.0.14 — cluster: ok
-[✔]    Replica redis-node-4 upgraded
-[STEP]  20:46:58 Upgrading replica redis-node-5 (10.10.0.15)...
+[STEP]  21:20:19 Upgrading replica redis-node-5 (10.10.0.15)...
 
 PLAY [Upgrade Single Redis Node] ***********************************************
 
@@ -280,7 +185,7 @@ ok: [redis-node-5]
 
 TASK [Display current version] *************************************************
 ok: [redis-node-5] => 
-  msg: 'Current version on redis-node-5: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=8c29a026423588fe'
+  msg: 'Current version on redis-node-5: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=ac04e79c24d45984'
 
 TASK [Determine if upgrade is needed] ******************************************
 ok: [redis-node-5]
@@ -337,7 +242,7 @@ ok: [redis-node-5]
 
 TASK [Display new version] *****************************************************
 ok: [redis-node-5] => 
-  msg: 'Upgraded redis-node-5 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=728f0251920b4778'
+  msg: 'Upgraded redis-node-5 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b0246f20992f3d15'
 
 TASK [Clean up build artifacts] ************************************************
 changed: [redis-node-5]
@@ -358,88 +263,84 @@ PLAY RECAP *********************************************************************
 redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 redis-node-5               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 
-[STEP]  20:49:14 Waiting for replica 10.10.0.15 to synchronize (master_link_status:up)...
+[STEP]  21:22:40 Waiting for replica 10.10.0.15 to synchronize (master_link_status:up)...
 [✔]    Replica 10.10.0.15 is fully synchronized.
 [✔]    Cluster healthy after upgrading redis-node-5
-[3/6] Upgraded replica 10.10.0.15 — cluster: ok
+[2/6] Upgraded replica 10.10.0.15 — cluster: ok
 [✔]    Replica redis-node-5 upgraded
-[STEP]  20:49:15 Step 4/5: Upgrading masters with failover...
-[STEP]  20:49:15 Failing over redis-node-3 → promoting redis-node-4...
-[✔]    Failover done: redis-node-4 is master
-[✔]    Cluster healthy after failover of redis-node-3
-[STEP]  20:49:16 Upgrading old master redis-node-3 (now replica)...
+[STEP]  21:22:41 Upgrading replica redis-node-4 (10.10.0.14)...
 
 PLAY [Upgrade Single Redis Node] ***********************************************
 
 TASK [Gathering Facts] *********************************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Check current Redis version] *********************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Display current version] *************************************************
-ok: [redis-node-3] => 
-  msg: 'Current version on redis-node-3: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=7a8ece55407d3f30'
+ok: [redis-node-4] => 
+  msg: 'Current version on redis-node-4: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=63fd68ba6c451e00'
 
 TASK [Determine if upgrade is needed] ******************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Stop Redis gracefully with SAVE] *****************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Wait for Redis to stop] **************************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Install build dependencies] **********************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Create build directory] **************************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Download new Redis version on host] **************************************
-ok: [redis-node-3 -> localhost]
+ok: [redis-node-4 -> localhost]
 
 TASK [Copy new Redis version to remote node] ***********************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Extract Redis source] ****************************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Build Redis from source] *************************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Install Redis binaries] **************************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Update symlinks] *********************************************************
-ok: [redis-node-3] => (item=redis-server)
-ok: [redis-node-3] => (item=redis-cli)
-ok: [redis-node-3] => (item=redis-benchmark)
-ok: [redis-node-3] => (item=redis-check-aof)
-ok: [redis-node-3] => (item=redis-check-rdb)
+ok: [redis-node-4] => (item=redis-server)
+ok: [redis-node-4] => (item=redis-cli)
+ok: [redis-node-4] => (item=redis-benchmark)
+ok: [redis-node-4] => (item=redis-check-aof)
+ok: [redis-node-4] => (item=redis-check-rdb)
 
 TASK [Clean up local DB data to prevent version incompatibility crash] *********
-changed: [redis-node-3] => (item=/var/lib/redis/dump.rdb)
-changed: [redis-node-3] => (item=/var/lib/redis/appendonlydir)
+changed: [redis-node-4] => (item=/var/lib/redis/dump.rdb)
+changed: [redis-node-4] => (item=/var/lib/redis/appendonlydir)
 
 TASK [Start Redis with existing config] ****************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 TASK [Wait for Redis to start] *************************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Verify Redis is responding] **********************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Verify new version] ******************************************************
-ok: [redis-node-3]
+ok: [redis-node-4]
 
 TASK [Display new version] *****************************************************
-ok: [redis-node-3] => 
-  msg: 'Upgraded redis-node-3 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=ace416a296561b9e'
+ok: [redis-node-4] => 
+  msg: 'Upgraded redis-node-4 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b00773991df31b48'
 
 TASK [Clean up build artifacts] ************************************************
-changed: [redis-node-3]
+changed: [redis-node-4]
 
 PLAY [Verify cluster health after node upgrade] ********************************
 
@@ -451,115 +352,22 @@ ok: [redis-node-1]
 
 TASK [Display cluster state] ***************************************************
 ok: [redis-node-1] => 
-  msg: 'Cluster state after upgrading redis-node-3: cluster_state:ok'
+  msg: 'Cluster state after upgrading redis-node-4: cluster_state:ok'
 
 PLAY RECAP *********************************************************************
 redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-redis-node-3               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+redis-node-4               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 
-[STEP]  20:51:32 Waiting for replica 10.10.0.13 to synchronize (master_link_status:up)...
-[✔]    Replica 10.10.0.13 is fully synchronized.
-[✔]    Cluster healthy after upgrading redis-node-3
-[4/6] Upgraded master 10.10.0.13 — cluster: ok
-[✔]    Master redis-node-3 upgraded
-[STEP]  20:51:32 Failing over redis-node-1 → promoting redis-node-5...
-[✔]    Failover done: redis-node-5 is master
-[✔]    Cluster healthy after failover of redis-node-1
-[STEP]  20:51:33 Upgrading old master redis-node-1 (now replica)...
-
-PLAY [Upgrade Single Redis Node] ***********************************************
-
-TASK [Gathering Facts] *********************************************************
-ok: [redis-node-1]
-
-TASK [Check current Redis version] *********************************************
-ok: [redis-node-1]
-
-TASK [Display current version] *************************************************
-ok: [redis-node-1] => 
-  msg: 'Current version on redis-node-1: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=ce24f64a89c82353'
-
-TASK [Determine if upgrade is needed] ******************************************
-ok: [redis-node-1]
-
-TASK [Stop Redis gracefully with SAVE] *****************************************
-changed: [redis-node-1]
-
-TASK [Wait for Redis to stop] **************************************************
-ok: [redis-node-1]
-
-TASK [Install build dependencies] **********************************************
-ok: [redis-node-1]
-
-TASK [Create build directory] **************************************************
-changed: [redis-node-1]
-
-TASK [Download new Redis version on host] **************************************
-ok: [redis-node-1 -> localhost]
-
-TASK [Copy new Redis version to remote node] ***********************************
-changed: [redis-node-1]
-
-TASK [Extract Redis source] ****************************************************
-changed: [redis-node-1]
-
-TASK [Build Redis from source] *************************************************
-changed: [redis-node-1]
-
-TASK [Install Redis binaries] **************************************************
-changed: [redis-node-1]
-
-TASK [Update symlinks] *********************************************************
-ok: [redis-node-1] => (item=redis-server)
-ok: [redis-node-1] => (item=redis-cli)
-ok: [redis-node-1] => (item=redis-benchmark)
-ok: [redis-node-1] => (item=redis-check-aof)
-ok: [redis-node-1] => (item=redis-check-rdb)
-
-TASK [Clean up local DB data to prevent version incompatibility crash] *********
-changed: [redis-node-1] => (item=/var/lib/redis/dump.rdb)
-changed: [redis-node-1] => (item=/var/lib/redis/appendonlydir)
-
-TASK [Start Redis with existing config] ****************************************
-changed: [redis-node-1]
-
-TASK [Wait for Redis to start] *************************************************
-ok: [redis-node-1]
-
-TASK [Verify Redis is responding] **********************************************
-ok: [redis-node-1]
-
-TASK [Verify new version] ******************************************************
-ok: [redis-node-1]
-
-TASK [Display new version] *****************************************************
-ok: [redis-node-1] => 
-  msg: 'Upgraded redis-node-1 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=51249092251b341f'
-
-TASK [Clean up build artifacts] ************************************************
-changed: [redis-node-1]
-
-PLAY [Verify cluster health after node upgrade] ********************************
-
-TASK [Wait for cluster to reconverge] ******************************************
-ok: [redis-node-1]
-
-TASK [Display cluster state] ***************************************************
-ok: [redis-node-1] => 
-  msg: 'Cluster state after upgrading redis-node-1: cluster_state:ok'
-
-PLAY RECAP *********************************************************************
-redis-node-1               : ok=23   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-
-[STEP]  20:53:50 Waiting for replica 10.10.0.11 to synchronize (master_link_status:up)...
-[✔]    Replica 10.10.0.11 is fully synchronized.
-[✔]    Cluster healthy after upgrading redis-node-1
-[5/6] Upgraded master 10.10.0.11 — cluster: ok
-[✔]    Master redis-node-1 upgraded
-[STEP]  20:53:51 Failing over redis-node-2 → promoting redis-node-6...
+[STEP]  21:25:09 Waiting for replica 10.10.0.14 to synchronize (master_link_status:up)...
+[✔]    Replica 10.10.0.14 is fully synchronized.
+[✔]    Cluster healthy after upgrading redis-node-4
+[3/6] Upgraded replica 10.10.0.14 — cluster: ok
+[✔]    Replica redis-node-4 upgraded
+[STEP]  21:25:09 Step 4/5: Upgrading masters with failover...
+[STEP]  21:25:10 Failing over redis-node-2 → promoting redis-node-6...
 [✔]    Failover done: redis-node-6 is master
 [✔]    Cluster healthy after failover of redis-node-2
-[STEP]  20:53:52 Upgrading old master redis-node-2 (now replica)...
+[STEP]  21:25:11 Upgrading old master redis-node-2 (now replica)...
 
 PLAY [Upgrade Single Redis Node] ***********************************************
 
@@ -571,7 +379,7 @@ ok: [redis-node-2]
 
 TASK [Display current version] *************************************************
 ok: [redis-node-2] => 
-  msg: 'Current version on redis-node-2: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=b577417308ec78b4'
+  msg: 'Current version on redis-node-2: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=955a06c96e0da9ce'
 
 TASK [Determine if upgrade is needed] ******************************************
 ok: [redis-node-2]
@@ -628,7 +436,7 @@ ok: [redis-node-2]
 
 TASK [Display new version] *****************************************************
 ok: [redis-node-2] => 
-  msg: 'Upgraded redis-node-2 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=3546346f830c8435'
+  msg: 'Upgraded redis-node-2 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=248912b5157bb90d'
 
 TASK [Clean up build artifacts] ************************************************
 changed: [redis-node-2]
@@ -649,12 +457,204 @@ PLAY RECAP *********************************************************************
 redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 redis-node-2               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 
-[STEP]  20:56:10 Waiting for replica 10.10.0.12 to synchronize (master_link_status:up)...
+[STEP]  21:27:40 Waiting for replica 10.10.0.12 to synchronize (master_link_status:up)...
 [✔]    Replica 10.10.0.12 is fully synchronized.
 [✔]    Cluster healthy after upgrading redis-node-2
-[6/6] Upgraded master 10.10.0.12 — cluster: ok
+[4/6] Upgraded master 10.10.0.12 — cluster: ok
 [✔]    Master redis-node-2 upgraded
-[STEP]  20:56:11 Step 5/5: Post-upgrade verification...
+[STEP]  21:27:41 Failing over redis-node-3 → promoting redis-node-4...
+[✔]    Failover done: redis-node-4 is master
+[✔]    Cluster healthy after failover of redis-node-3
+[STEP]  21:27:42 Upgrading old master redis-node-3 (now replica)...
+
+PLAY [Upgrade Single Redis Node] ***********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-3]
+
+TASK [Check current Redis version] *********************************************
+ok: [redis-node-3]
+
+TASK [Display current version] *************************************************
+ok: [redis-node-3] => 
+  msg: 'Current version on redis-node-3: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=5aa389ef269cee4a'
+
+TASK [Determine if upgrade is needed] ******************************************
+ok: [redis-node-3]
+
+TASK [Stop Redis gracefully with SAVE] *****************************************
+changed: [redis-node-3]
+
+TASK [Wait for Redis to stop] **************************************************
+ok: [redis-node-3]
+
+TASK [Install build dependencies] **********************************************
+ok: [redis-node-3]
+
+TASK [Create build directory] **************************************************
+changed: [redis-node-3]
+
+TASK [Download new Redis version on host] **************************************
+ok: [redis-node-3 -> localhost]
+
+TASK [Copy new Redis version to remote node] ***********************************
+changed: [redis-node-3]
+
+TASK [Extract Redis source] ****************************************************
+changed: [redis-node-3]
+
+TASK [Build Redis from source] *************************************************
+changed: [redis-node-3]
+
+TASK [Install Redis binaries] **************************************************
+changed: [redis-node-3]
+
+TASK [Update symlinks] *********************************************************
+ok: [redis-node-3] => (item=redis-server)
+ok: [redis-node-3] => (item=redis-cli)
+ok: [redis-node-3] => (item=redis-benchmark)
+ok: [redis-node-3] => (item=redis-check-aof)
+ok: [redis-node-3] => (item=redis-check-rdb)
+
+TASK [Clean up local DB data to prevent version incompatibility crash] *********
+changed: [redis-node-3] => (item=/var/lib/redis/dump.rdb)
+changed: [redis-node-3] => (item=/var/lib/redis/appendonlydir)
+
+TASK [Start Redis with existing config] ****************************************
+changed: [redis-node-3]
+
+TASK [Wait for Redis to start] *************************************************
+ok: [redis-node-3]
+
+TASK [Verify Redis is responding] **********************************************
+ok: [redis-node-3]
+
+TASK [Verify new version] ******************************************************
+ok: [redis-node-3]
+
+TASK [Display new version] *****************************************************
+ok: [redis-node-3] => 
+  msg: 'Upgraded redis-node-3 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=da92fcf3ad7c12cb'
+
+TASK [Clean up build artifacts] ************************************************
+changed: [redis-node-3]
+
+PLAY [Verify cluster health after node upgrade] ********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-1]
+
+TASK [Wait for cluster to reconverge] ******************************************
+ok: [redis-node-1]
+
+TASK [Display cluster state] ***************************************************
+ok: [redis-node-1] => 
+  msg: 'Cluster state after upgrading redis-node-3: cluster_state:ok'
+
+PLAY RECAP *********************************************************************
+redis-node-1               : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+redis-node-3               : ok=21   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[STEP]  21:30:07 Waiting for replica 10.10.0.13 to synchronize (master_link_status:up)...
+[✔]    Replica 10.10.0.13 is fully synchronized.
+[✔]    Cluster healthy after upgrading redis-node-3
+[5/6] Upgraded master 10.10.0.13 — cluster: ok
+[✔]    Master redis-node-3 upgraded
+[STEP]  21:30:08 Failing over redis-node-1 → promoting redis-node-5...
+[✔]    Failover done: redis-node-5 is master
+[✔]    Cluster healthy after failover of redis-node-1
+[STEP]  21:30:09 Upgrading old master redis-node-1 (now replica)...
+
+PLAY [Upgrade Single Redis Node] ***********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [redis-node-1]
+
+TASK [Check current Redis version] *********************************************
+ok: [redis-node-1]
+
+TASK [Display current version] *************************************************
+ok: [redis-node-1] => 
+  msg: 'Current version on redis-node-1: Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.2.1 bits=64 build=ee09b1f0ef29f229'
+
+TASK [Determine if upgrade is needed] ******************************************
+ok: [redis-node-1]
+
+TASK [Stop Redis gracefully with SAVE] *****************************************
+changed: [redis-node-1]
+
+TASK [Wait for Redis to stop] **************************************************
+ok: [redis-node-1]
+
+TASK [Install build dependencies] **********************************************
+ok: [redis-node-1]
+
+TASK [Create build directory] **************************************************
+changed: [redis-node-1]
+
+TASK [Download new Redis version on host] **************************************
+ok: [redis-node-1 -> localhost]
+
+TASK [Copy new Redis version to remote node] ***********************************
+changed: [redis-node-1]
+
+TASK [Extract Redis source] ****************************************************
+changed: [redis-node-1]
+
+TASK [Build Redis from source] *************************************************
+changed: [redis-node-1]
+
+TASK [Install Redis binaries] **************************************************
+changed: [redis-node-1]
+
+TASK [Update symlinks] *********************************************************
+ok: [redis-node-1] => (item=redis-server)
+ok: [redis-node-1] => (item=redis-cli)
+ok: [redis-node-1] => (item=redis-benchmark)
+ok: [redis-node-1] => (item=redis-check-aof)
+ok: [redis-node-1] => (item=redis-check-rdb)
+
+TASK [Clean up local DB data to prevent version incompatibility crash] *********
+changed: [redis-node-1] => (item=/var/lib/redis/dump.rdb)
+changed: [redis-node-1] => (item=/var/lib/redis/appendonlydir)
+
+TASK [Start Redis with existing config] ****************************************
+changed: [redis-node-1]
+
+TASK [Wait for Redis to start] *************************************************
+ok: [redis-node-1]
+
+TASK [Verify Redis is responding] **********************************************
+ok: [redis-node-1]
+
+TASK [Verify new version] ******************************************************
+ok: [redis-node-1]
+
+TASK [Display new version] *****************************************************
+ok: [redis-node-1] => 
+  msg: 'Upgraded redis-node-1 to: Redis server v=7.2.6 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=a38b39bc85885def'
+
+TASK [Clean up build artifacts] ************************************************
+changed: [redis-node-1]
+
+PLAY [Verify cluster health after node upgrade] ********************************
+
+TASK [Wait for cluster to reconverge] ******************************************
+ok: [redis-node-1]
+
+TASK [Display cluster state] ***************************************************
+ok: [redis-node-1] => 
+  msg: 'Cluster state after upgrading redis-node-1: cluster_state:ok'
+
+PLAY RECAP *********************************************************************
+redis-node-1               : ok=23   changed=9    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[STEP]  21:32:40 Waiting for replica 10.10.0.11 to synchronize (master_link_status:up)...
+[✔]    Replica 10.10.0.11 is fully synchronized.
+[✔]    Cluster healthy after upgrading redis-node-1
+[6/6] Upgraded master 10.10.0.11 — cluster: ok
+[✔]    Master redis-node-1 upgraded
+[STEP]  21:32:40 Step 5/5: Post-upgrade verification...
 
 PLAY [Verify Redis Cluster Data Integrity] *************************************
 
@@ -690,7 +690,7 @@ ok: [redis-node-1] =>
   - '  Missing:     0'
   - '  Corrupted:   0'
   - '  Errors:      0'
-  - '  Time:        3.61s'
+  - '  Time:        3.71s'
   - ============================================================
   - ''
   - PASS — 1000/1000 keys verified
@@ -730,26 +730,24 @@ ok: [redis-node-1] =>
   - cluster_known_nodes:6
   - cluster_size:3
   - cluster_current_epoch:9
-  - cluster_my_epoch:8
-  - cluster_stats_messages_ping_sent:262
-  - cluster_stats_messages_pong_sent:264
-  - cluster_stats_messages_sent:526
-  - cluster_stats_messages_ping_received:264
-  - cluster_stats_messages_pong_received:262
-  - cluster_stats_messages_fail_received:2
-  - cluster_stats_messages_auth-req_received:1
-  - cluster_stats_messages_received:529
+  - cluster_my_epoch:9
+  - cluster_stats_messages_ping_sent:38
+  - cluster_stats_messages_pong_sent:42
+  - cluster_stats_messages_sent:80
+  - cluster_stats_messages_ping_received:42
+  - cluster_stats_messages_pong_received:38
+  - cluster_stats_messages_received:80
   - total_cluster_links_buffer_limit_exceeded:0
 
 TASK [Display cluster topology] ************************************************
 ok: [redis-node-1] => 
   msg:
-  - 625c41e8a2c280ca9495da537670f43bbe00a674 10.10.0.11:6379@16379 myself,slave f5f1335f97932f288141e43bb3427d34aa8a37ed 0 1781623579000 8 connected
-  - fb4c3f7b8dd0a0029769f902bee24e60e6ef7be7 10.10.0.16:6379@16379 master - 0 1781623581372 9 connected 5461-10922
-  - 0b063bab3422d29df68c4da1af2b87ad6de108f1 10.10.0.13:6379@16379 slave 46270941d355d881cd9d64ad9d9c1390f328046f 0 1781623581000 7 connected
-  - 46270941d355d881cd9d64ad9d9c1390f328046f 10.10.0.14:6379@16379 master - 0 1781623581000 7 connected 10923-16383
-  - f5f1335f97932f288141e43bb3427d34aa8a37ed 10.10.0.15:6379@16379 master - 0 1781623581876 8 connected 0-5460
-  - 9740c7b91bbab92517e0f748bc3e4f88eca380ab 10.10.0.12:6379@16379 slave fb4c3f7b8dd0a0029769f902bee24e60e6ef7be7 0 1781623580566 9 connected
+  - da2f1a60ceada2ff5c390cb319c55512e625fe60 10.10.0.14:6379@16379 master - 0 1781625772602 8 connected 10923-16383
+  - 533457e766c0e37e4a0beda9c1ea14ccf6a6af33 10.10.0.16:6379@16379 master - 0 1781625771000 7 connected 5461-10922
+  - a402baf798b2d10befb95f5bd49ba4a163fd58cd 10.10.0.11:6379@16379 myself,slave b7cb3dfe1a09bfc8618cb660554e43d22b911cd9 0 1781625771000 9 connected
+  - b7cb3dfe1a09bfc8618cb660554e43d22b911cd9 10.10.0.15:6379@16379 master - 0 1781625772095 9 connected 0-5460
+  - 4601d0511584776b34e178f8bf79b7c7142e5935 10.10.0.12:6379@16379 slave 533457e766c0e37e4a0beda9c1ea14ccf6a6af33 0 1781625772602 7 connected
+  - 56a339a4ab4fcfe119bc959db09117ec57b4f610 10.10.0.13:6379@16379 slave da2f1a60ceada2ff5c390cb319c55512e625fe60 0 1781625771590 8 connected
 
 TASK [Get info for each node] **************************************************
 ok: [redis-node-1]
@@ -759,51 +757,51 @@ ok: [redis-node-1] =>
   msg:
   - === Node 10.10.0.11 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:159
-  - used_memory_human:1.98M
+  - uptime_in_seconds:21
+  - used_memory_human:1.84M
   - maxmemory_human:256.00M
-  - db0:keys=584,expires=251,avg_ttl=0
-  - '584'
+  - db0:keys=530,expires=197,avg_ttl=0
+  - '530'
   - ''
   - === Node 10.10.0.12 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:20
-  - used_memory_human:1.81M
+  - uptime_in_seconds:322
+  - used_memory_human:2.02M
   - maxmemory_human:256.00M
-  - db0:keys=612,expires=288,avg_ttl=0
-  - '612'
+  - db0:keys=535,expires=211,avg_ttl=0
+  - '535'
   - ''
   - === Node 10.10.0.13 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:299
-  - used_memory_human:2.07M
+  - uptime_in_seconds:175
+  - used_memory_human:1.96M
   - maxmemory_human:256.00M
-  - db0:keys=599,expires=256,avg_ttl=0
-  - '599'
+  - db0:keys=550,expires=207,avg_ttl=0
+  - '550'
   - ''
   - === Node 10.10.0.14 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:573
-  - used_memory_human:2.32M
+  - uptime_in_seconds:473
+  - used_memory_human:2.21M
   - maxmemory_human:256.00M
-  - db0:keys=599,expires=256,avg_ttl=31770
-  - '599'
+  - db0:keys=550,expires=207,avg_ttl=34156
+  - '550'
   - ''
   - === Node 10.10.0.15 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:437
-  - used_memory_human:2.22M
+  - uptime_in_seconds:622
+  - used_memory_human:2.29M
   - maxmemory_human:256.00M
-  - db0:keys=584,expires=251,avg_ttl=31826
-  - '584'
+  - db0:keys=529,expires=196,avg_ttl=32841
+  - '529'
   - ''
   - === Node 10.10.0.16 ===
   - redis_version:7.2.6
-  - uptime_in_seconds:710
-  - used_memory_human:2.42M
+  - uptime_in_seconds:763
+  - used_memory_human:2.41M
   - maxmemory_human:256.00M
-  - db0:keys=612,expires=288,avg_ttl=30532
-  - '611'
+  - db0:keys=534,expires=210,avg_ttl=35356
+  - '534'
 
 PLAY RECAP *********************************************************************
 redis-node-1               : ok=7    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   

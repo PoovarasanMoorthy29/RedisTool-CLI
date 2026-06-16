@@ -700,3 +700,99 @@
 {"timestamp": "2026-06-16T15:55:11.068554Z", "command": "upgrade", "action": "Failover done: redis-node-6 is master", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:55:11.422558Z", "command": "upgrade", "action": "Cluster healthy after failover of redis-node-2", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-16T15:55:11.423061Z", "command": "upgrade", "action": "Upgrading old master redis-node-2 (now replica)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:57:40.768764Z", "command": "upgrade", "action": "Waiting for replica 10.10.0.12 to synchronize (master_link_status:up)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:57:41.121789Z", "command": "upgrade", "action": "Replica 10.10.0.12 is fully synchronized.", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:57:41.432355Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-2", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:57:41.432543Z", "command": "upgrade", "action": "Master redis-node-2 upgraded", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:57:41.432667Z", "command": "upgrade", "action": "Failing over redis-node-3 \u2192 promoting redis-node-4...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T15:57:42.128682Z", "command": "upgrade", "action": "Failover done: redis-node-4 is master", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:57:42.481725Z", "command": "upgrade", "action": "Cluster healthy after failover of redis-node-3", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T15:57:42.482309Z", "command": "upgrade", "action": "Upgrading old master redis-node-3 (now replica)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:00:07.396243Z", "command": "upgrade", "action": "Waiting for replica 10.10.0.13 to synchronize (master_link_status:up)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:00:07.732470Z", "command": "upgrade", "action": "Replica 10.10.0.13 is fully synchronized.", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:00:08.103353Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-3", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:00:08.103694Z", "command": "upgrade", "action": "Master redis-node-3 upgraded", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:00:08.104019Z", "command": "upgrade", "action": "Failing over redis-node-1 \u2192 promoting redis-node-5...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:00:08.850093Z", "command": "upgrade", "action": "Failover done: redis-node-5 is master", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:00:09.225966Z", "command": "upgrade", "action": "Cluster healthy after failover of redis-node-1", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:00:09.226271Z", "command": "upgrade", "action": "Upgrading old master redis-node-1 (now replica)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:02:40.202465Z", "command": "upgrade", "action": "Waiting for replica 10.10.0.11 to synchronize (master_link_status:up)...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:02:40.542464Z", "command": "upgrade", "action": "Replica 10.10.0.11 is fully synchronized.", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:02:40.908275Z", "command": "upgrade", "action": "Cluster healthy after upgrading redis-node-1", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:02:40.908700Z", "command": "upgrade", "action": "Master redis-node-1 upgraded", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:02:40.909088Z", "command": "upgrade", "action": "Step 5/5: Post-upgrade verification...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:02:54.034350Z", "command": "upgrade", "action": "Data integrity: VERIFIED", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:02:54.034655Z", "command": "upgrade", "action": "Cluster state: OK", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:02:54.034979Z", "command": "upgrade", "action": "Zero-downtime rolling upgrade successful!", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:03:25.747037Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:03:26.176793Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:43.936624Z", "command": "verify", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:44.369881Z", "command": "verify", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:44.370346Z", "command": "verify", "action": "1. Data integrity check...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:04:53.244904Z", "command": "verify", "action": "Data integrity: PASS", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:53.245233Z", "command": "verify", "action": "2. Version consistency...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:04:55.726673Z", "command": "verify", "action": "Version consistency: PASS (all v7.2.6)", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:55.726986Z", "command": "verify", "action": "3. Cluster state...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:04:56.049934Z", "command": "verify", "action": "Cluster state: OK", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:56.050252Z", "command": "verify", "action": "4. Slot coverage...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:04:56.050461Z", "command": "verify", "action": "Slot coverage: 16384/16384", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:56.050690Z", "command": "verify", "action": "5. Replication lag...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:04:58.101614Z", "command": "verify", "action": "Replication lag: PASS \u2014 all replicas have master_link_status:up", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:04:58.101996Z", "command": "verify", "action": "All checks passed!", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:05:43.701115Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:05:44.138746Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:00.713829Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:01.186145Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:11.309241Z", "command": "provision", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:11.775676Z", "command": "provision", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:11.776166Z", "command": "provision", "action": "Checking if cluster is already provisioned...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:12.009112Z", "command": "provision", "action": "Cleaning up any previous infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:12.009456Z", "command": "provision", "action": "Tearing down infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:27.546888Z", "command": "provision", "action": "Infrastructure destroyed", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:27.547185Z", "command": "provision", "action": "Bringing up 6-node container infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:27.547342Z", "command": "provision", "action": "Generating SSH keypair for Ansible...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:29.628495Z", "command": "provision", "action": "SSH keypair generated", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:46.960559Z", "command": "provision", "action": "Waiting for SSH on all nodes...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:07:47.321089Z", "command": "provision", "action": "SSH ready: 10.10.0.11", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:47.676905Z", "command": "provision", "action": "SSH ready: 10.10.0.12", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:48.005357Z", "command": "provision", "action": "SSH ready: 10.10.0.13", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:48.354401Z", "command": "provision", "action": "SSH ready: 10.10.0.14", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:48.690601Z", "command": "provision", "action": "SSH ready: 10.10.0.15", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:49.027778Z", "command": "provision", "action": "SSH ready: 10.10.0.16", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:07:49.028182Z", "command": "provision", "action": "Installing Redis 7.2.6 on all nodes...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:16:50.230368Z", "command": "provision", "action": "Provision complete!", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:17:34.867570Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:17:35.583767Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:47.345039Z", "command": "verify", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:47.825193Z", "command": "verify", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:47.825525Z", "command": "verify", "action": "1. Data integrity check...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:19:56.109846Z", "command": "verify", "action": "Command failed (rc=2): ANSIBLE_CONFIG=/home/poovarasan/Desktop/RedisTool-CLI/ansible/ansible.cfg ansible-playbook -i /home/poovarasan/Desktop/RedisTool-CLI/ansible/inventory/hosts.ini /home/poovarasan/Desktop/RedisTool-CLI/ansible/playbooks/verify.yml --private-key=/home/poovarasan/Desktop/RedisTool-CLI/infra/ssh_keys/id_rsa -e \"num_keys=1000\"", "outcome": "error", "details": {}}
+{"timestamp": "2026-06-16T16:19:56.110197Z", "command": "verify", "action": "Data integrity: FAIL", "outcome": "failure", "details": {}}
+{"timestamp": "2026-06-16T16:19:56.110453Z", "command": "verify", "action": "2. Version consistency...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.622330Z", "command": "verify", "action": "Version consistency: PASS (all v7.2.6)", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.622501Z", "command": "verify", "action": "3. Cluster state...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.959573Z", "command": "verify", "action": "Cluster state: OK", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.959789Z", "command": "verify", "action": "4. Slot coverage...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.959909Z", "command": "verify", "action": "Slot coverage: 16384/16384", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:19:58.960028Z", "command": "verify", "action": "5. Replication lag...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:00.996619Z", "command": "verify", "action": "Replication lag: PASS \u2014 all replicas have master_link_status:up", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:00.996985Z", "command": "verify", "action": "Some checks failed!", "outcome": "failure", "details": {}}
+{"timestamp": "2026-06-16T16:20:06.825717Z", "command": "data", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:07.301561Z", "command": "data", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:32.146199Z", "command": "verify", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:32.691870Z", "command": "verify", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:32.692331Z", "command": "verify", "action": "1. Data integrity check...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:40.815540Z", "command": "verify", "action": "Data integrity: PASS", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:40.815985Z", "command": "verify", "action": "2. Version consistency...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.324902Z", "command": "verify", "action": "Version consistency: PASS (all v7.2.6)", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.325082Z", "command": "verify", "action": "3. Cluster state...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.681452Z", "command": "verify", "action": "Cluster state: OK", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.681789Z", "command": "verify", "action": "4. Slot coverage...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.682058Z", "command": "verify", "action": "Slot coverage: 16384/16384", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:43.682307Z", "command": "verify", "action": "5. Replication lag...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-16T16:20:45.771378Z", "command": "verify", "action": "Replication lag: PASS \u2014 all replicas have master_link_status:up", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:20:45.771706Z", "command": "verify", "action": "All checks passed!", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:22:43.563590Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:22:44.084860Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:23:45.477245Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-16T16:23:45.944731Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}

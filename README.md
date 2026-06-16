@@ -65,6 +65,12 @@ curl -fsSL https://get.docker.com | sh
 pip3 install ansible>=2.14
 ```
 
+### SSH Key Configuration
+
+To facilitate secure, key-based container access without password prompts, the tool's pre-flight check automatically generates a dedicated SSH keypair in the `infra/ssh_keys/` directory (specifically `id_rsa` and `id_rsa.pub`) if they are missing.
+
+These key files are used by Ansible to connect securely to the cluster nodes. They are explicitly ignored in `.gitignore` to ensure they are never committed or pushed to Git and GitHub.
+
 ---
 
 ## Quick Start
