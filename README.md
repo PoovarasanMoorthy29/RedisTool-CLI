@@ -188,5 +188,4 @@ RedisTool-CLI/
 └── logs/
     └── operations.jsonl             ← Event audit logs
 ```
-
 ---
