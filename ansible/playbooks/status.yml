@@ -1,24 +1,46 @@
 ---
-- name: Get Redis Cluster Status
-  hosts: redis_nodes
-  gather_facts: yes
+# Status Playbook
+# Reports cluster status including nodes, roles, slots, keys, memory, state
+# Usage: ansible-playbook playbooks/status.yml
+
+- name: Redis Cluster Status
+  hosts: redis-node-1
+  become: yes
+  vars:
+    redis_install_dir: "/opt/redis"
+    redis_port: 6379
   tasks:
-    - name: Get Redis server info
-      shell: "redis-cli info server"
-      register: server_info
-      run_once: true
-
-    - name: Display Redis version and status
-      debug:
-        msg: "{{ server_info.stdout_lines }}"
-      run_once: true
-
     - name: Get cluster info
-      shell: "redis-cli cluster info"
+      command: "{{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} cluster info"
       register: cluster_info
-      run_once: true
+      changed_when: false
+
+    - name: Get cluster nodes
+      command: "{{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} cluster nodes"
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Display cluster info
+      debug:
+        msg: "{{ cluster_info.stdout_lines }}"
 
     - name: Display cluster topology
       debug:
-        msg: "{{ cluster_info.stdout_lines }}"
-      run_once: true
+        msg: "{{ cluster_nodes.stdout_lines }}"
+
+    - name: Get info for each node
+      shell: |
+        for ip in 10.250.0.11 10.250.0.12 10.250.0.13 10.250.0.14 10.250.0.15 10.250.0.16; do
+          echo "=== Node $ip ==="
+          {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} INFO server 2>/dev/null | grep -E "(redis_version|uptime_in_seconds|role)" || echo "UNREACHABLE"
+          {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} INFO memory 2>/dev/null | grep -E "(used_memory_human|maxmemory_human)" || true
+          {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} INFO keyspace 2>/dev/null | grep "^db" || echo "No keys"
+          {{ redis_install_dir }}/bin/redis-cli -h $ip -p {{ redis_port }} DBSIZE 2>/dev/null || true
+          echo ""
+        done
+      register: node_details
+      changed_when: false
+
+    - name: Display node details
+      debug:
+        msg: "{{ node_details.stdout_lines }}"

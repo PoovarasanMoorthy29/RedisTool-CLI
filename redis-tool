@@ -1,572 +1,606 @@
 #!/usr/bin/env python3
 """
-Redis Cluster Lifecycle Tool
-Manages Redis cluster provisioning, upgrades, and operations.
+redis-tool — Redis Cluster Lifecycle CLI
+=========================================
+Provisions, operates, and performs zero-downtime rolling upgrades
+on a 6-node Redis Cluster (3M + 3R) with Ansible automation.
+
+Usage:
+    ./redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
+    ./redis-tool data seed --keys 1000
+    ./redis-tool data verify
+    ./redis-tool status
+    ./redis-tool upgrade --target-version 7.2.6 --strategy rolling
+    ./redis-tool verify --full
+    ./redis-tool infra up|down
 """
 
-import sys
-import shutil
-import subprocess
 import argparse
 import os
-import hashlib
-import time
 import re
-import json
+import shutil
+import subprocess
+import sys
+import time
 from datetime import datetime
-from pathlib import Path
-from redis.cluster import RedisCluster
 
-# Redis node IP mappings
-NODE_IPS = {
-    "redis-node-1": "10.10.0.11",
-    "redis-node-2": "10.10.0.12",
-    "redis-node-3": "10.10.0.13",
-    "redis-node-4": "10.10.0.14",
-    "redis-node-5": "10.10.0.15",
-    "redis-node-6": "10.10.0.16",
+# ═══════════════════════════════════════════════════════════════════
+# CONSTANTS & PATHS
+# ═══════════════════════════════════════════════════════════════════
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+ANSIBLE_DIR = os.path.join(PROJECT_ROOT, "ansible")
+INFRA_DIR = os.path.join(PROJECT_ROOT, "infra")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "output")
+LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
+SSH_KEY_DIR = os.path.join(INFRA_DIR, "ssh_keys")
+SSH_KEY = os.path.join(SSH_KEY_DIR, "id_rsa")
+
+NODES = {
+    "redis-node-1": "10.250.0.11",
+    "redis-node-2": "10.250.0.12",
+    "redis-node-3": "10.250.0.13",
+    "redis-node-4": "10.250.0.14",
+    "redis-node-5": "10.250.0.15",
+    "redis-node-6": "10.250.0.16",
 }
+SSH_PORTS = {
+    "10.250.0.11": 2211,
+    "10.250.0.12": 2212,
+    "10.250.0.13": 2213,
+    "10.250.0.14": 2214,
+    "10.250.0.15": 2215,
+    "10.250.0.16": 2216,
+}
+ALL_IPS = list(NODES.values())
+IP_TO_NAME = {v: k for k, v in NODES.items()}
 
-IP_TO_NODE = {v: k for k, v in NODE_IPS.items()}
+for d in (OUTPUT_DIR, LOG_DIR):
+    os.makedirs(d, exist_ok=True)
 
-# Logging setup
-LOGS_DIR = Path("logs")
-LOGS_DIR.mkdir(exist_ok=True)
+# ═══════════════════════════════════════════════════════════════════
+# LOGGING
+# ═══════════════════════════════════════════════════════════════════
 
-def log_message(operation, level, message, error=None):
-    """Write structured log entry"""
-    timestamp = datetime.now().isoformat()
-    log_entry = {
-        "timestamp": timestamp,
-        "operation": operation,
-        "level": level,
-        "message": message,
-    }
-    if error:
-        log_entry["error"] = str(error)
-    
-    log_file = LOGS_DIR / f"{operation}.log"
-    with open(log_file, "a") as f:
-        f.write(json.dumps(log_entry) + "\n")
+RED = "\033[0;31m"
+GREEN = "\033[0;32m"
+YELLOW = "\033[1;33m"
+BLUE = "\033[0;34m"
+CYAN = "\033[0;36m"
+BOLD = "\033[1m"
+NC = "\033[0m"
 
-def check_prerequisites():
-    """Verify Docker/Podman and Ansible are installed"""
-    runtime = None
+
+def _ts():
+    return datetime.now().strftime("%H:%M:%S")
+
+
+def log_info(msg):
+    print(f"{GREEN}[INFO]{NC}  {_ts()} {msg}")
+
+
+def log_warn(msg):
+    print(f"{YELLOW}[WARN]{NC}  {_ts()} {msg}")
+
+
+def log_error(msg):
+    print(f"{RED}[ERROR]{NC} {_ts()} {msg}", file=sys.stderr)
+
+
+def log_step(msg):
+    print(f"{CYAN}[STEP]{NC}  {_ts()} {msg}")
+
+
+def log_ok(msg):
+    print(f"{GREEN}[✔]{NC}    {msg}")
+
+
+def log_fail(msg):
+    print(f"{RED}[✘]{NC}    {msg}")
+
+
+def header(title):
+    print()
+    print(f"{BOLD}{BLUE}{'═' * 60}{NC}")
+    print(f"{BOLD}{BLUE}  {title}{NC}")
+    print(f"{BOLD}{BLUE}{'═' * 60}{NC}")
+    print()
+
+
+def abort(msg):
+    log_fail(msg)
+    sys.exit(1)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SHELL & SSH HELPERS
+# ═══════════════════════════════════════════════════════════════════
+
+
+def run(cmd, cwd=None, check=True, capture=True):
+    """Run a shell command, return CompletedProcess."""
+    result = subprocess.run(
+        cmd, shell=True, cwd=cwd,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.STDOUT if capture else None,
+        text=True,
+    )
+    if check and result.returncode != 0:
+        log_error(f"Command failed: {cmd}")
+        if capture and result.stdout:
+            print(result.stdout)
+        sys.exit(result.returncode)
+    return result
+
+
+def run_live(cmd, cwd=None, check=True):
+    """Run command with live stdout/stderr output."""
+    proc = subprocess.run(cmd, shell=True, cwd=cwd)
+    if check and proc.returncode != 0:
+        log_error(f"Command failed (rc={proc.returncode}): {cmd}")
+        sys.exit(proc.returncode)
+    return proc
+
+
+def ssh_cmd(ip, remote_cmd):
+    """Run a command on a container node via SSH."""
+    port = SSH_PORTS.get(ip, 22)
+    full = (
+        f"ssh -i {SSH_KEY} -p {port} -o StrictHostKeyChecking=no "
+        f"-o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 "
+        f'ansible@127.0.0.1 "sudo {remote_cmd}"'
+    )
+    r = run(full, check=False)
+    return r.stdout.strip() if r.stdout else "", r.returncode
+
+
+def redis_cli(ip, redis_cmd, port=6379):
+    """Execute redis-cli on a remote node, return stdout."""
+    out, _ = ssh_cmd(ip, f"/opt/redis/bin/redis-cli -h 127.0.0.1 -p {port} {redis_cmd}")
+    return out
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PREREQUISITE DETECTION
+# ═══════════════════════════════════════════════════════════════════
+
+CONTAINER_ENGINE = ""
+COMPOSE_CMD = ""
+
+
+def detect_container_engine():
+    global CONTAINER_ENGINE, COMPOSE_CMD
     if shutil.which("podman"):
-        runtime = "podman"
+        CONTAINER_ENGINE = "podman"
+        COMPOSE_CMD = "podman-compose" if shutil.which("podman-compose") else "podman compose"
     elif shutil.which("docker"):
-        runtime = "docker"
+        CONTAINER_ENGINE = "docker"
+        r = subprocess.run("docker compose version", shell=True, capture_output=True)
+        if r.returncode == 0:
+            COMPOSE_CMD = "docker compose"
+        elif shutil.which("docker-compose"):
+            COMPOSE_CMD = "docker-compose"
+        else:
+            abort("Docker found but no compose plugin available")
     else:
-        print("✗ Neither Docker nor Podman found!")
-        print("\nInstallation instructions:")
-        print("  Ubuntu/Debian: sudo apt-get install -y docker.io podman")
-        print("  RHEL/CentOS:   sudo yum install -y docker podman")
-        print("  macOS:         brew install docker podman")
-        sys.exit(1)
-    
+        abort(
+            "Neither Docker nor Podman found!\n"
+            "  Install Docker: https://docs.docker.com/get-docker/\n"
+            "  Install Podman: https://podman.io/getting-started/installation"
+        )
+    log_ok(f"Container engine: {CONTAINER_ENGINE} ({COMPOSE_CMD})")
+
+
+def detect_ansible():
     if not shutil.which("ansible-playbook"):
-        print("✗ Ansible not found!")
-        print("\nInstallation instructions:")
-        print("  Ubuntu/Debian: sudo apt-get install -y ansible")
-        print("  RHEL/CentOS:   sudo yum install -y ansible")
-        print("  Via pip:       pip install ansible>=2.14")
-        sys.exit(1)
-    
-    print(f"✓ Using {runtime} as container runtime")
-    print("✓ Ansible installed")
-    return runtime
+        abort("Ansible not found! Install: pip3 install ansible>=2.14")
+    r = run("ansible --version", check=False)
+    version_str = ""
+    for line in (r.stdout or "").splitlines():
+        m = re.search(r"(\d+\.\d+)", line)
+        if m:
+            version_str = m.group(1)
+            break
+    if version_str:
+        major, minor = map(int, version_str.split("."))
+        if major < 2 or (major == 2 and minor < 14):
+            abort(f"Ansible 2.14+ required, found {version_str}")
+    log_ok(f"Ansible: {version_str or 'detected'}")
 
-def get_runtime():
-    """Get the active container runtime"""
-    if shutil.which("podman"):
-        return "podman"
-    elif shutil.which("docker"):
-        return "docker"
-    return None
 
-def run_command(cmd, shell=False, check=True):
-    """Execute shell command and return result"""
-    try:
-        result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, check=check)
-        return result
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"Command failed: {e.stderr}")
+def preflight():
+    header("Preflight Checks")
+    detect_container_engine()
+    detect_ansible()
+    print()
 
-def run_provision(version, masters, replicas_per_master):
-    """Provision Redis cluster with specified topology"""
-    print(f"\n{'='*60}")
-    print(f"Provisioning Redis {version} cluster")
-    print(f"Topology: {masters} masters, {replicas_per_master} replica(s) per master")
-    print(f"{'='*60}\n")
-    
-    log_message("provision", "INFO", f"Starting provision: version={version}, masters={masters}, replicas={replicas_per_master}")
-    
-    cmd = [
-        "ansible-playbook",
-        "ansible/playbooks/provision.yml",
-        "--extra-vars", f"redis_version={version} cluster_masters={masters} replicas_per_master={replicas_per_master}"
-    ]
-    
-    env = os.environ.copy()
-    env["ANSIBLE_CONFIG"] = "./ansible/ansible.cfg"
-    
-    result = subprocess.run(cmd, env=env)
-    
-    if result.returncode != 0:
-        print("\n✗ Provision failed!")
-        log_message("provision", "ERROR", "Provision playbook failed")
-        sys.exit(1)
-    
-    # Wait for cluster to stabilize
-    print("\nWaiting for cluster to stabilize...")
-    time.sleep(5)
-    
-    # Fix replication topology
-    print("Verifying replication topology...")
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        nodes = rc.cluster_nodes()
-        masters = [n for n in nodes if 'master' in n['flags'] and n['slots']]
-        
-        print(f"✓ Cluster formed with {len(masters)} master(s)")
-        print("\n=========================================")
-        print("✓ REDIS CLUSTER PROVISIONED SUCCESSFULLY!")
-        print("=========================================")
-        log_message("provision", "INFO", "Provision completed successfully")
-    except Exception as e:
-        print(f"⚠ Topology verification skipped (cluster warming up): {e}")
-        log_message("provision", "WARN", f"Topology verification skipped: {e}")
 
-def run_status():
-    """Display Redis cluster status"""
-    try:
-        print(f"\n{'='*60}")
-        print("REDIS CLUSTER STATUS")
-        print(f"{'='*60}\n")
-        
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        nodes = rc.cluster_nodes()
-        
-        runtime = get_runtime()
-        
-        # Get cluster state
-        state_res = run_command(f"{runtime} exec redis-node-1 redis-cli cluster info", shell=True, check=False)
-        state = "ok" if "cluster_state:ok" in state_res.stdout else "fail"
-        
-        # Get version from first node
-        ver_res = run_command(f"{runtime} exec redis-node-1 redis-cli info server", shell=True, check=False)
-        version_match = re.search(r'redis_version:([^\s]+)', ver_res.stdout)
-        version = version_match.group(1) if version_match else "N/A"
-        
-        print(f"Cluster State: {state}")
-        print(f"Redis Version: {version}")
-        print(f"Total Nodes: {len(nodes)}\n")
-        
-        # Display masters
-        print("MASTERS:")
-        for n in nodes:
-            if 'master' in n['flags'] and n['slots']:
-                ip = n['host'].split(':')[0]
-                node_name = IP_TO_NODE.get(ip, ip)
-                mem_res = run_command(f"{runtime} exec {node_name} redis-cli info memory", shell=True, check=False)
-                mem_match = re.search(r'used_memory_human:([^\s]+)', mem_res.stdout)
-                mem_str = mem_match.group(1) if mem_match else "N/A"
-                slots = f"{n['slots'][0][0]}-{n['slots'][0][1]}" if n['slots'] else "none"
-                key_res = run_command(f"{runtime} exec {node_name} redis-cli dbsize", shell=True, check=False)
-                keys = key_res.stdout.split(':')[1].strip() if ':' in key_res.stdout else "N/A"
-                print(f"  {ip}:6379")
-                print(f"    Role: master")
-                print(f"    Slots: {slots}")
-                print(f"    Keys: {keys}")
-                print(f"    Memory: {mem_str}")
-        
-        # Display replicas
-        print("\nREPLICAS:")
-        for n in nodes:
-            if 'slave' in n['flags'] or ('master' in n['flags'] and not n['slots']):
-                ip = n['host'].split(':')[0]
-                node_name = IP_TO_NODE.get(ip, ip)
-                mem_res = run_command(f"{runtime} exec {node_name} redis-cli info memory", shell=True, check=False)
-                mem_match = re.search(r'used_memory_human:([^\s]+)', mem_res.stdout)
-                mem_str = mem_match.group(1) if mem_match else "N/A"
-                key_res = run_command(f"{runtime} exec {node_name} redis-cli dbsize", shell=True, check=False)
-                keys = key_res.stdout.split(':')[1].strip() if ':' in key_res.stdout else "N/A"
-                print(f"  {ip}:6379")
-                print(f"    Role: replica")
-                print(f"    Keys: {keys}")
-                print(f"    Memory: {mem_str}")
-        
-        log_message("status", "INFO", "Status check completed")
-        
-    except Exception as e:
-        print(f"✗ Failed to retrieve metrics: {e}")
-        log_message("status", "ERROR", f"Failed to retrieve metrics: {e}")
-        sys.exit(1)
+# ═══════════════════════════════════════════════════════════════════
+# SSH KEYS & INFRASTRUCTURE
+# ═══════════════════════════════════════════════════════════════════
 
-def run_seed(count):
-    """Seed Redis cluster with deterministic test data"""
-    print(f"\n{'='*60}")
-    print(f"SEEDING {count} DETERMINISTIC KEYS")
-    print(f"{'='*60}\n")
-    
-    print(f"Generating and inserting {count} keys with deterministic values...")
-    
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        success = 0
-        failed = 0
-        
-        for i in range(1, count + 1):
-            try:
-                key = f"key:{i:04d}"
-                value = hashlib.sha256(key.encode()).hexdigest()
-                rc.set(key, value)
-                success += 1
-                if i % 100 == 0:
-                    print(f"  Progress: {i}/{count} keys inserted")
-            except Exception as e:
-                failed += 1
-        
-        print(f"\n✓ Summary: Total keys inserted: {success}/{count}")
-        if failed > 0:
-            print(f"⚠ Failed inserts: {failed}")
-        
-        log_message("seed", "INFO", f"Seeded {success} keys successfully, {failed} failures")
-        
-    except Exception as e:
-        print(f"✗ Seeding failed: {e}")
-        log_message("seed", "ERROR", f"Seeding failed: {e}")
-        sys.exit(1)
 
-def run_verify(full=False):
-    """Verify Redis cluster data integrity"""
-    if not full:
-        print(f"\n{'='*60}")
-        print("DATA VERIFICATION")
-        print(f"{'='*60}\n")
-    
-    print("Running data verification protocol...")
-    
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        passed = 0
-        failed = 0
-        
-        for i in range(1, 1001):
-            try:
-                key = f"key:{i:04d}"
-                expected_val = hashlib.sha256(key.encode()).hexdigest()
-                actual_val = rc.get(key)
-                
-                if actual_val and actual_val.decode() == expected_val:
-                    passed += 1
-                else:
-                    failed += 1
-            except Exception as e:
-                failed += 1
-        
-        print(f"\nData Integrity Result: ", end="")
-        if failed == 0:
-            print(f"✓ PASS")
-            print(f"✓ All {passed}/1000 keys verified successfully!")
-            log_message("verify", "INFO", f"Data verification PASS: {passed}/1000")
-            return True
-        else:
-            print(f"✗ FAIL")
-            print(f"✗ {failed} keys missing or corrupted.")
-            print(f"✓ Passed: {passed}/1000")
-            log_message("verify", "ERROR", f"Data verification FAIL: {failed} corrupted, {passed} passed")
-            return False
-            
-    except Exception as e:
-        print(f"✗ Verification failed: {e}")
-        log_message("verify", "ERROR", f"Verification error: {e}")
-        return False
-
-def run_verify_full():
-    """Run comprehensive cluster health and data verification"""
-    print(f"\n{'='*60}")
-    print("FULL CLUSTER VERIFICATION")
-    print(f"{'='*60}\n")
-    
-    runtime = get_runtime()
-    all_passed = True
-    
-    # 1. Check cluster state
-    print("1. Checking cluster state...")
-    state_res = run_command(f"{runtime} exec redis-node-1 redis-cli cluster info", shell=True, check=False)
-    if "cluster_state:ok" in state_res.stdout:
-        print("   ✓ Cluster state: OK")
+def ensure_ssh_keys():
+    if not os.path.exists(SSH_KEY):
+        log_step("Generating SSH keypair for Ansible...")
+        os.makedirs(SSH_KEY_DIR, exist_ok=True)
+        run(f'ssh-keygen -t rsa -b 4096 -f {SSH_KEY} -N "" -q')
+        log_ok("SSH keypair generated")
     else:
-        print("   ✗ Cluster state: FAIL")
-        all_passed = False
-    
-    # 2. Check node reachability
-    print("\n2. Checking node reachability...")
-    for node_name, ip in NODE_IPS.items():
-        ping_res = run_command(f"{runtime} exec {node_name} redis-cli ping", shell=True, check=False)
-        if "PONG" in ping_res.stdout:
-            print(f"   ✓ {node_name} ({ip}): OK")
-        else:
-            print(f"   ✗ {node_name} ({ip}): UNREACHABLE")
-            all_passed = False
-    
-    # 3. Check slot coverage
-    print("\n3. Checking slot coverage...")
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        nodes = rc.cluster_nodes()
-        total_slots = 0
-        for n in nodes:
-            if n['slots']:
-                for slot_range in n['slots']:
-                    total_slots += slot_range[1] - slot_range[0] + 1
-        
-        if total_slots == 16384:
-            print(f"   ✓ All 16384 slots covered")
-        else:
-            print(f"   ✗ Only {total_slots}/16384 slots covered")
-            all_passed = False
-    except Exception as e:
-        print(f"   ✗ Slot check failed: {e}")
-        all_passed = False
-    
-    # 4. Check version consistency
-    print("\n4. Checking version consistency...")
-    versions = set()
-    for node_name in NODE_IPS.keys():
-        ver_res = run_command(f"{runtime} exec {node_name} redis-cli info server", shell=True, check=False)
-        ver_match = re.search(r'redis_version:([^\s]+)', ver_res.stdout)
-        if ver_match:
-            versions.add(ver_match.group(1))
-    
-    if len(versions) == 1:
-        print(f"   ✓ All nodes running same version: {versions.pop()}")
-    else:
-        print(f"   ✗ Version mismatch detected: {versions}")
-        all_passed = False
-    
-    # 5. Check replication status
-    print("\n5. Checking replication status...")
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        nodes = rc.cluster_nodes()
-        replicas = sum(1 for n in nodes if 'slave' in n['flags'])
-        masters = sum(1 for n in nodes if 'master' in n['flags'] and n['slots'])
-        print(f"   ✓ Masters: {masters}, Replicas: {replicas}")
-    except Exception as e:
-        print(f"   ✗ Replication check failed: {e}")
-        all_passed = False
-    
-    # 6. Data integrity
-    print("\n6. Checking data integrity...")
-    if run_verify(full=True):
-        pass  # Already printed in run_verify
-    else:
-        all_passed = False
-    
-    print(f"\n{'='*60}")
-    if all_passed:
-        print("✓ FULL VERIFICATION PASSED")
-    else:
-        print("✗ FULL VERIFICATION FAILED")
-    print(f"{'='*60}\n")
-    
-    log_message("verify_full", "INFO" if all_passed else "ERROR", "Full verification completed")
-    return all_passed
+        log_ok("SSH keypair exists")
 
-def run_upgrade(target_version, strategy):
-    """Perform rolling upgrade of Redis cluster"""
-    print(f"\n{'='*60}")
-    print(f"REDIS CLUSTER UPGRADE")
-    print(f"Target Version: {target_version}")
-    print(f"Strategy: {strategy}")
-    print(f"{'='*60}\n")
-    
-    log_message("upgrade", "INFO", f"Starting upgrade to {target_version} using {strategy} strategy")
-    
-    if strategy != "rolling":
-        print("✗ Currently only 'rolling' strategy is supported")
-        sys.exit(1)
-    
-    # Pre-flight checks
-    print("Running pre-flight checks...")
-    try:
-        rc = RedisCluster(host='10.10.0.11', port=6379, skip_full_coverage_check=True)
-        state_res = run_command(f"{get_runtime()} exec redis-node-1 redis-cli cluster info", shell=True, check=False)
-        if "cluster_state:ok" not in state_res.stdout:
-            print("✗ Cluster is not in OK state. Aborting upgrade.")
-            log_message("upgrade", "ERROR", "Cluster not in OK state")
-            sys.exit(1)
-        print("✓ Cluster state OK")
-        
-        # Verify data before upgrade
-        print("✓ Verifying data integrity before upgrade...")
-        if not run_verify(full=True):
-            print("✗ Data verification failed. Aborting upgrade.")
-            log_message("upgrade", "ERROR", "Pre-upgrade verification failed")
-            sys.exit(1)
-    except Exception as e:
-        print(f"✗ Pre-flight check failed: {e}")
-        log_message("upgrade", "ERROR", f"Pre-flight check failed: {e}")
-        sys.exit(1)
-    
-    runtime = get_runtime()
-    
-    # Upgrade replicas first
-    print("\n\nPhase 1: Upgrading replicas (one at a time)...")
-    replica_nodes = ["redis-node-4", "redis-node-5", "redis-node-6"]
-    
-    for node_name in replica_nodes:
-        print(f"\nUpgrading replica: {node_name}...")
-        try:
-            # Stop Redis
-            run_command(f"{runtime} exec {node_name} redis-cli shutdown NOSAVE", shell=True, check=False)
+
+def infra_up():
+    """Bring up 6 containers and wait for SSH readiness."""
+    log_step("Bringing up 6-node container infrastructure...")
+    ensure_ssh_keys()
+    run_live(f"cd {INFRA_DIR} && {COMPOSE_CMD} up -d --build", check=True)
+    log_step("Waiting for SSH on all nodes...")
+    for ip in ALL_IPS:
+        for attempt in range(30):
+            _, rc = ssh_cmd(ip, "echo ok")
+            if rc == 0:
+                break
             time.sleep(2)
-            
-            # Run upgrade playbook
-            cmd = [
-                "ansible-playbook",
-                "ansible/playbooks/upgrade.yml",
-                "--extra-vars", f"target_host={node_name} redis_version={target_version}"
-            ]
-            env = os.environ.copy()
-            env["ANSIBLE_CONFIG"] = "./ansible/ansible.cfg"
-            result = subprocess.run(cmd, env=env)
-            
-            if result.returncode != 0:
-                print(f"✗ Upgrade failed for {node_name}")
-                log_message("upgrade", "ERROR", f"Upgrade failed for {node_name}")
-                sys.exit(1)
-            
-            time.sleep(3)
-            print(f"✓ {node_name} upgraded successfully")
-        except Exception as e:
-            print(f"✗ Error upgrading {node_name}: {e}")
-            log_message("upgrade", "ERROR", f"Error upgrading {node_name}: {e}")
-            sys.exit(1)
-    
-    # Upgrade masters with failover
-    print("\n\nPhase 2: Upgrading masters with failover...")
-    master_nodes = ["redis-node-1", "redis-node-2", "redis-node-3"]
-    
-    for node_name in master_nodes:
-        print(f"\nUpgrading master: {node_name}...")
-        try:
-            # Trigger failover
-            print(f"  Triggering failover for {node_name}...")
-            run_command(f"{runtime} exec {node_name} redis-cli cluster failover", shell=True, check=False)
-            time.sleep(5)
-            
-            # Stop Redis
-            run_command(f"{runtime} exec {node_name} redis-cli shutdown NOSAVE", shell=True, check=False)
-            time.sleep(2)
-            
-            # Run upgrade playbook
-            cmd = [
-                "ansible-playbook",
-                "ansible/playbooks/upgrade.yml",
-                "--extra-vars", f"target_host={node_name} redis_version={target_version}"
-            ]
-            env = os.environ.copy()
-            env["ANSIBLE_CONFIG"] = "./ansible/ansible.cfg"
-            result = subprocess.run(cmd, env=env)
-            
-            if result.returncode != 0:
-                print(f"✗ Upgrade failed for {node_name}")
-                log_message("upgrade", "ERROR", f"Upgrade failed for {node_name}")
-                sys.exit(1)
-            
-            time.sleep(3)
-            print(f"✓ {node_name} upgraded successfully")
-        except Exception as e:
-            print(f"✗ Error upgrading {node_name}: {e}")
-            log_message("upgrade", "ERROR", f"Error upgrading {node_name}: {e}")
-            sys.exit(1)
-    
-    # Post-upgrade verification
-    print("\n\nPhase 3: Post-upgrade verification...")
-    time.sleep(5)
-    
-    if run_verify_full():
-        print("\n✓ UPGRADE COMPLETED SUCCESSFULLY!")
-        log_message("upgrade", "INFO", "Upgrade completed successfully")
+        else:
+            abort(f"SSH not reachable on {ip} after 30 attempts")
+        log_ok(f"SSH ready: {ip}")
+
+
+def infra_down():
+    log_step("Tearing down infrastructure...")
+    run_live(f"cd {INFRA_DIR} && {COMPOSE_CMD} down -v", check=False)
+    # Clean up containers from BOTH engines to avoid port conflicts
+    for engine in ("podman", "docker"):
+        if shutil.which(engine):
+            for i in range(1, 7):
+                name = f"redis-node-{i}"
+                run(f"{engine} stop {name}", check=False)
+                run(f"{engine} rm -f {name}", check=False)
+                run(f"{engine} volume rm -f infra_redis-data-{i}", check=False)
+                run(f"{engine} volume rm -f redis-data-{i}", check=False)
+    log_ok("Infrastructure destroyed")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ANSIBLE RUNNER
+# ═══════════════════════════════════════════════════════════════════
+
+
+def run_playbook(playbook, extra_vars=None, live=True):
+    """Run an Ansible playbook. Returns CompletedProcess if live=False."""
+    cmd = (
+        f"ANSIBLE_CONFIG={ANSIBLE_DIR}/ansible.cfg "
+        f"ansible-playbook -i {ANSIBLE_DIR}/inventory/hosts.ini "
+        f"{ANSIBLE_DIR}/playbooks/{playbook} "
+        f"--private-key={SSH_KEY}"
+    )
+    if extra_vars:
+        for k, v in extra_vars.items():
+            cmd += f' -e "{k}={v}"'
+    if live:
+        return run_live(cmd, check=True)
     else:
-        print("\n✗ UPGRADE VERIFICATION FAILED")
-        log_message("upgrade", "ERROR", "Post-upgrade verification failed")
-        sys.exit(1)
+        return run(cmd, check=False)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CLUSTER HELPERS
+# ═══════════════════════════════════════════════════════════════════
+
+
+def wait_cluster_ok(context="", retries=60, delay=3):
+    """Block until cluster_state:ok or abort."""
+    for _ in range(retries):
+        out = redis_cli(ALL_IPS[0], "cluster info")
+        if "cluster_state:ok" in out:
+            log_ok(f"Cluster healthy {context}")
+            return
+        time.sleep(delay)
+    abort(f"Cluster did not recover {context}")
+
+
+def get_cluster_nodes():
+    """Parse 'cluster nodes' output into a list of dicts."""
+    raw = redis_cli(ALL_IPS[0], "cluster nodes")
+    nodes = []
+    for line in raw.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        nid = parts[0]
+        ip = parts[1].split("@")[0].rsplit(":", 1)[0]
+        flags = parts[2]
+        master_id = parts[3]
+        role = "master" if "master" in flags else "slave"
+        nodes.append({
+            "id": nid, "ip": ip, "flags": flags,
+            "role": role, "master_id": master_id,
+            "name": IP_TO_NAME.get(ip, ip),
+        })
+    return nodes
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: provision
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_provision(args):
+    version = args.version
+    masters = args.masters
+    replicas = args.replicas_per_master
+    header(f"Provisioning Redis Cluster v{version} ({masters}M + {masters * replicas}R)")
+    preflight()
+    log_step("Cleaning up any previous infrastructure...")
+    infra_down()
+    infra_up()
+    log_step(f"Installing Redis {version} on all nodes...")
+    run_playbook("provision.yml", extra_vars={
+        "redis_version_override": version,
+        "masters_count_override": str(masters),
+        "replicas_per_master_override": str(replicas),
+    })
+    log_ok("Provision complete!")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: status
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_status(_args):
+    header("Redis Cluster Status")
+    preflight()
+    run_playbook("status.yml")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: data seed / data verify
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_data_seed(args):
+    header(f"Seeding {args.keys} Keys")
+    preflight()
+    run_playbook("seed.yml", extra_vars={"num_keys": str(args.keys)})
+
+
+def cmd_data_verify(args):
+    header("Verifying Data Integrity")
+    preflight()
+    run_playbook("verify.yml", extra_vars={"num_keys": str(args.keys)})
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: upgrade (rolling, zero-downtime)
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_upgrade(args):
+    target = args.target_version
+    header(f"Rolling Upgrade to Redis {target}")
+    preflight()
+
+    # Step 1 — Pre-flight
+    log_step("Step 1/5: Pre-flight health checks...")
+    if "cluster_state:ok" not in redis_cli(ALL_IPS[0], "cluster info"):
+        abort("Cluster not healthy — aborting")
+    log_ok("Cluster state: ok")
+
+    for ip in ALL_IPS:
+        if redis_cli(ip, "ping").strip() != "PONG":
+            abort(f"Node {ip} not responding — aborting")
+        log_ok(f"Node {ip}: reachable")
+
+    log_step("Baseline data verification...")
+    run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
+    log_ok("Baseline data: intact")
+
+    # Step 2 — Discover topology
+    log_step("Step 2/5: Discovering cluster topology...")
+    nodes = get_cluster_nodes()
+    replicas = [n for n in nodes if n["role"] == "slave"]
+    masters = [n for n in nodes if n["role"] == "master"]
+    log_info(f"Masters:  {', '.join(n['name'] for n in masters)}")
+    log_info(f"Replicas: {', '.join(n['name'] for n in replicas)}")
+
+    # Step 3 — Upgrade replicas
+    log_step("Step 3/5: Upgrading replicas...")
+    for rep in replicas:
+        log_step(f"Upgrading replica {rep['name']} ({rep['ip']})...")
+        run_playbook("upgrade.yml", extra_vars={
+            "upgrade_node": rep["name"], "target_version": target,
+        })
+        wait_cluster_ok(f"after upgrading {rep['name']}")
+        log_ok(f"Replica {rep['name']} upgraded")
+
+    # Step 4 — Upgrade masters with failover
+    log_step("Step 4/5: Upgrading masters with failover...")
+    nodes = get_cluster_nodes()  # re-discover after replica upgrades
+    masters = [n for n in nodes if n["role"] == "master"]
+    rep_for_master = {}
+    for n in nodes:
+        if n["role"] == "slave":
+            rep_for_master[n["master_id"]] = n
+
+    for master in masters:
+        mname, mip, mid = master["name"], master["ip"], master["id"]
+        rep = rep_for_master.get(mid)
+        if not rep:
+            abort(f"No replica for master {mname} — ABORTING")
+
+        log_step(f"Failing over {mname} → promoting {rep['name']}...")
+        redis_cli(rep["ip"], "CLUSTER FAILOVER")
+
+        for _ in range(30):
+            if "role:master" in redis_cli(rep["ip"], "INFO replication"):
+                log_ok(f"Failover done: {rep['name']} is master")
+                break
+            time.sleep(2)
+        else:
+            abort(f"Failover timed out for {mname}")
+
+        wait_cluster_ok(f"after failover of {mname}")
+
+        log_step(f"Upgrading old master {mname} (now replica)...")
+        run_playbook("upgrade.yml", extra_vars={
+            "upgrade_node": mname, "target_version": target,
+        })
+        wait_cluster_ok(f"after upgrading {mname}")
+        log_ok(f"Master {mname} upgraded")
+
+    # Step 5 — Post-upgrade verification
+    log_step("Step 5/5: Post-upgrade verification...")
+    run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
+    run_playbook("status.yml")
+
+    header(f"Upgrade Complete — All Nodes at v{target}")
+    log_ok("Data integrity: VERIFIED")
+    log_ok("Cluster state: OK")
+    log_ok("Zero-downtime rolling upgrade successful!")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: verify --full
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_verify(args):
+    header("Full Cluster Verification")
+    preflight()
+
+    # 1 — Data integrity
+    log_step("1. Data integrity check...")
+    run_playbook("verify.yml", extra_vars={"num_keys": "1000"})
+    log_ok("Data integrity: PASS")
+
+    # 2 — Version consistency
+    log_step("2. Version consistency...")
+    versions = []
+    for ip in ALL_IPS:
+        info = redis_cli(ip, "INFO server")
+        ver = next((l.split(":")[1].strip() for l in info.splitlines()
+                     if l.startswith("redis_version:")), "?")
+        versions.append(ver)
+        log_info(f"  {ip} ({IP_TO_NAME.get(ip)}): v{ver}")
+    unique = set(v for v in versions if v != "?")
+    if len(unique) == 1:
+        log_ok(f"Version consistency: PASS (all v{unique.pop()})")
+    else:
+        log_fail(f"Version consistency: FAIL (mixed: {unique})")
+
+    # 3 — Cluster state
+    log_step("3. Cluster state...")
+    info = redis_cli(ALL_IPS[0], "cluster info")
+    log_ok("Cluster state: OK") if "cluster_state:ok" in info else log_fail("NOT OK")
+
+    # 4 — Slot coverage
+    log_step("4. Slot coverage...")
+    for line in info.splitlines():
+        if "cluster_slots_ok" in line:
+            slots = line.split(":")[1].strip()
+            (log_ok if slots == "16384" else log_fail)(f"Slot coverage: {slots}/16384")
+
+    # 5 — Replication lag (--full)
+    if args.full:
+        log_step("5. Replication lag...")
+        for ip in ALL_IPS:
+            repl = redis_cli(ip, "INFO replication")
+            if "role:slave" in repl:
+                offsets = [l for l in repl.splitlines() if "repl_offset" in l]
+                log_info(f"  {ip} (replica): {'; '.join(offsets)}")
+
+    header("Verification Complete")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMAND: infra up/down
+# ═══════════════════════════════════════════════════════════════════
+
+
+def cmd_infra_up(_args):
+    preflight()
+    infra_up()
+
+
+def cmd_infra_down(_args):
+    preflight()
+    infra_down()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# MAIN — ARGPARSE DISPATCHER
+# ═══════════════════════════════════════════════════════════════════
+
+BANNER = """
+  ╔══════════════════════════════════════════════════════╗
+  ║          redis-tool · Cluster Lifecycle CLI          ║
+  ╚══════════════════════════════════════════════════════╝
+"""
+
 
 def main():
-    """Main CLI entry point"""
     parser = argparse.ArgumentParser(
-        description="Redis Cluster Lifecycle Tool",
+        prog="redis-tool",
+        description="Redis Cluster Lifecycle CLI — provision, operate, and upgrade.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
-  redis-tool data seed --keys 1000
-  redis-tool data verify
-  redis-tool status
-  redis-tool upgrade --target-version 7.2.6 --strategy rolling
-  redis-tool verify --full
-        """
+        epilog=BANNER,
     )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
-    
-    # provision command
-    provision_parser = subparsers.add_parser('provision', help='Provision Redis cluster')
-    provision_parser.add_argument('--version', required=True, help='Redis version to install')
-    provision_parser.add_argument('--masters', type=int, default=3, help='Number of master nodes')
-    provision_parser.add_argument('--replicas-per-master', type=int, default=1, help='Replicas per master')
-    
-    # data command
-    data_parser = subparsers.add_parser('data', help='Manage cluster data')
-    data_subparsers = data_parser.add_subparsers(dest='data_command', help='Data operation')
-    
-    seed_parser = data_subparsers.add_parser('seed', help='Seed cluster with test data')
-    seed_parser.add_argument('--keys', type=int, default=1000, help='Number of keys to seed')
-    
-    data_subparsers.add_parser('verify', help='Verify data integrity')
-    
-    # status command
-    subparsers.add_parser('status', help='Show cluster status')
-    
-    # verify command
-    verify_parser = subparsers.add_parser('verify', help='Verify cluster health')
-    verify_parser.add_argument('--full', action='store_true', help='Full verification')
-    
-    # upgrade command
-    upgrade_parser = subparsers.add_parser('upgrade', help='Upgrade Redis version')
-    upgrade_parser.add_argument('--target-version', required=True, help='Target Redis version')
-    upgrade_parser.add_argument('--strategy', default='rolling', help='Upgrade strategy (rolling, etc.)')
-    
-    args = parser.parse_args()
-    
-    # Check prerequisites first
-    check_prerequisites()
-    
-    # Route commands
-    if args.command == 'provision':
-        run_provision(args.version, args.masters, args.replicas_per_master)
-    elif args.command == 'data':
-        if args.data_command == 'seed':
-            run_seed(args.keys)
-        elif args.data_command == 'verify':
-            run_verify()
-        else:
-            data_parser.print_help()
-    elif args.command == 'status':
-        run_status()
-    elif args.command == 'verify':
-        if args.full:
-            run_verify_full()
-        else:
-            run_verify()
-    elif args.command == 'upgrade':
-        run_upgrade(args.target_version, args.strategy)
-    else:
-        parser.print_help()
+    sub = parser.add_subparsers(dest="command", help="Available commands")
 
-if __name__ == '__main__':
+    # provision
+    p = sub.add_parser("provision", help="Provision a Redis Cluster")
+    p.add_argument("--version", default="7.0.15")
+    p.add_argument("--masters", type=int, default=3)
+    p.add_argument("--replicas-per-master", type=int, default=1)
+    p.set_defaults(func=cmd_provision)
+
+    # status
+    p = sub.add_parser("status", help="Show cluster status")
+    p.set_defaults(func=cmd_status)
+
+    # data
+    p_data = sub.add_parser("data", help="Seed or verify data")
+    ds = p_data.add_subparsers(dest="data_cmd")
+    p = ds.add_parser("seed", help="Seed test data")
+    p.add_argument("--keys", type=int, default=1000)
+    p.set_defaults(func=cmd_data_seed)
+    p = ds.add_parser("verify", help="Verify data integrity")
+    p.add_argument("--keys", type=int, default=1000)
+    p.set_defaults(func=cmd_data_verify)
+
+    # upgrade
+    p = sub.add_parser("upgrade", help="Rolling upgrade")
+    p.add_argument("--target-version", required=True)
+    p.add_argument("--strategy", default="rolling", choices=["rolling"])
+    p.set_defaults(func=cmd_upgrade)
+
+    # verify
+    p = sub.add_parser("verify", help="Full cluster verification")
+    p.add_argument("--full", action="store_true")
+    p.set_defaults(func=cmd_verify)
+
+    # infra
+    p_infra = sub.add_parser("infra", help="Manage containers")
+    isub = p_infra.add_subparsers(dest="infra_cmd")
+    p = isub.add_parser("up", help="Bring up containers")
+    p.set_defaults(func=cmd_infra_up)
+    p = isub.add_parser("down", help="Tear down containers")
+    p.set_defaults(func=cmd_infra_down)
+
+    args = parser.parse_args()
+
+    if not args.command:
+        print(BANNER)
+        parser.print_help()
+        sys.exit(0)
+
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.parse_args([args.command, "--help"])
+
+
+if __name__ == "__main__":
     main()

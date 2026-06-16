@@ -1,14 +1,91 @@
 ---
-- name: Seed Redis Cluster with Test Data
-  hosts: redis-node-1
-  gather_facts: no
-  tasks:
-    - name: Generate test data deterministically
-      debug:
-        msg: "Test data generation is handled by the CLI tool using Python hashlib"
-      run_once: true
+# Seed Playbook
+# Inserts deterministic key-value pairs into the Redis Cluster
+# Keys: key:0001 through key:NNNN
+# Values: SHA256 hash of the key
+# Usage: ansible-playbook playbooks/seed.yml -e "num_keys=1000"
 
-    - name: Note about seeding
+- name: Seed Redis Cluster Data
+  hosts: redis-node-1
+  become: yes
+  vars:
+    redis_install_dir: "/opt/redis"
+    redis_port: 6379
+    num_keys: 1000
+  tasks:
+    - name: Ensure python3-hashlib is available
+      apt:
+        name: python3
+        state: present
+
+    - name: Create seed script
+      copy:
+        dest: /tmp/redis_seed.py
+        mode: "0755"
+        content: |
+          #!/usr/bin/env python3
+          """Seed deterministic key-value pairs into Redis Cluster."""
+          import subprocess
+          import hashlib
+          import sys
+          import time
+
+          REDIS_CLI = "{{ redis_install_dir }}/bin/redis-cli"
+          HOST = "127.0.0.1"
+          PORT = {{ redis_port }}
+          NUM_KEYS = int(sys.argv[1]) if len(sys.argv) > 1 else {{ num_keys }}
+
+          success = 0
+          failed = 0
+          start_time = time.time()
+
+          print(f"Seeding {NUM_KEYS} deterministic keys into Redis Cluster...")
+
+          for i in range(1, NUM_KEYS + 1):
+              key = f"key:{i:04d}"
+              value = hashlib.sha256(key.encode()).hexdigest()
+
+              try:
+                  result = subprocess.run(
+                      [REDIS_CLI, "-h", HOST, "-p", str(PORT), "-c", "SET", key, value],
+                      capture_output=True, text=True, timeout=10
+                  )
+                  if result.returncode == 0 and "OK" in result.stdout:
+                      success += 1
+                  else:
+                      failed += 1
+                      if failed <= 5:
+                          print(f"  WARN: Failed to set {key}: {result.stdout.strip()} {result.stderr.strip()}")
+              except Exception as e:
+                  failed += 1
+                  if failed <= 5:
+                      print(f"  ERROR: Exception setting {key}: {e}")
+
+              if i % 100 == 0:
+                  print(f"  Progress: {i}/{NUM_KEYS} keys inserted...")
+
+          elapsed = time.time() - start_time
+          print(f"\n{'='*60}")
+          print(f"Seed Complete")
+          print(f"  Total:   {NUM_KEYS}")
+          print(f"  Success: {success}")
+          print(f"  Failed:  {failed}")
+          print(f"  Time:    {elapsed:.2f}s")
+          print(f"  Rate:    {success/elapsed:.0f} keys/sec")
+          print(f"{'='*60}")
+
+          if failed > 0:
+              sys.exit(1)
+
+    - name: Run seed script
+      command: "python3 /tmp/redis_seed.py {{ num_keys }}"
+      register: seed_result
+
+    - name: Display seed results
       debug:
-        msg: "Run 'redis-tool data seed --keys 1000' from the CLI to seed the cluster"
-      run_once: true
+        msg: "{{ seed_result.stdout_lines }}"
+
+    - name: Clean up seed script
+      file:
+        path: /tmp/redis_seed.py
+        state: absent

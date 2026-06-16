@@ -1,34 +1,120 @@
 ---
-- name: Verify Redis Cluster Health
-  hosts: redis_nodes
-  gather_facts: yes
+# Verify Playbook
+# Verifies data integrity by reading all keys and comparing against expected SHA256 values
+# Usage: ansible-playbook playbooks/verify.yml -e "num_keys=1000"
+
+- name: Verify Redis Cluster Data Integrity
+  hosts: redis-node-1
+  become: yes
+  vars:
+    redis_install_dir: "/opt/redis"
+    redis_port: 6379
+    num_keys: 1000
   tasks:
-    - name: Check cluster state
-      shell: "redis-cli cluster info | grep cluster_state"
-      register: cluster_state
-      run_once: true
+    - name: Create verify script
+      copy:
+        dest: /tmp/redis_verify.py
+        mode: "0755"
+        content: |
+          #!/usr/bin/env python3
+          """Verify deterministic key-value pair integrity in Redis Cluster."""
+          import subprocess
+          import hashlib
+          import sys
+          import time
 
-    - name: Display cluster state
+          REDIS_CLI = "{{ redis_install_dir }}/bin/redis-cli"
+          HOST = "127.0.0.1"
+          PORT = {{ redis_port }}
+          NUM_KEYS = int(sys.argv[1]) if len(sys.argv) > 1 else {{ num_keys }}
+
+          passed = 0
+          failed = 0
+          missing = 0
+          corrupted = 0
+          errors = []
+          start_time = time.time()
+
+          print(f"Verifying {NUM_KEYS} keys in Redis Cluster...")
+
+          for i in range(1, NUM_KEYS + 1):
+              key = f"key:{i:04d}"
+              expected_value = hashlib.sha256(key.encode()).hexdigest()
+
+              try:
+                  result = subprocess.run(
+                      [REDIS_CLI, "-h", HOST, "-p", str(PORT), "-c", "GET", key],
+                      capture_output=True, text=True, timeout=10
+                  )
+                  actual_value = result.stdout.strip()
+
+                  if result.returncode != 0:
+                      failed += 1
+                      errors.append(f"ERROR: Failed to GET {key}: {result.stderr.strip()}")
+                  elif actual_value == "" or actual_value == "(nil)":
+                      missing += 1
+                      errors.append(f"MISSING: {key}")
+                  elif actual_value == expected_value:
+                      passed += 1
+                  else:
+                      corrupted += 1
+                      errors.append(f"CORRUPTED: {key} expected={expected_value[:16]}... got={actual_value[:16]}...")
+              except Exception as e:
+                  failed += 1
+                  errors.append(f"EXCEPTION: {key}: {e}")
+
+              if i % 100 == 0:
+                  print(f"  Progress: {i}/{NUM_KEYS} keys verified...")
+
+          elapsed = time.time() - start_time
+          total_issues = failed + missing + corrupted
+
+          print(f"\n{'='*60}")
+          print(f"Data Verification Report")
+          print(f"{'='*60}")
+          print(f"  Total Keys:  {NUM_KEYS}")
+          print(f"  Passed:      {passed}")
+          print(f"  Missing:     {missing}")
+          print(f"  Corrupted:   {corrupted}")
+          print(f"  Errors:      {failed}")
+          print(f"  Time:        {elapsed:.2f}s")
+          print(f"{'='*60}")
+
+          if errors and len(errors) <= 20:
+              print("\nDetailed Issues:")
+              for err in errors:
+                  print(f"  {err}")
+          elif errors:
+              print(f"\nShowing first 20 of {len(errors)} issues:")
+              for err in errors[:20]:
+                  print(f"  {err}")
+
+          if total_issues == 0:
+              print(f"\n✅ RESULT: PASS — All {passed} keys verified successfully")
+              sys.exit(0)
+          else:
+              print(f"\n❌ RESULT: FAIL — {total_issues} issues found")
+              sys.exit(1)
+
+    - name: Run verification script
+      command: "python3 /tmp/redis_verify.py {{ num_keys }}"
+      register: verify_result
+      ignore_errors: yes
+
+    - name: Display verification results
       debug:
-        msg: "{{ cluster_state.stdout }}"
-      run_once: true
+        msg: "{{ verify_result.stdout_lines }}"
 
-    - name: Get node list
-      shell: "redis-cli cluster nodes"
-      register: nodes_list
-      run_once: true
+    - name: Set verification outcome
+      set_fact:
+        data_integrity_passed: "{{ verify_result.rc == 0 }}"
 
-    - name: Display cluster topology
-      debug:
-        msg: "{{ nodes_list.stdout_lines }}"
-      run_once: true
+    - name: Fail if verification failed
+      fail:
+        msg: "Data integrity verification FAILED"
+      when: verify_result.rc != 0
 
-    - name: Verify all slots are assigned
-      shell: "redis-cli cluster info | grep cluster_slots_assigned"
-      register: slots_assigned
-      run_once: true
-
-    - name: Display slots status
-      debug:
-        msg: "{{ slots_assigned.stdout }}"
-      run_once: true
+    - name: Clean up verify script
+      file:
+        path: /tmp/redis_verify.py
+        state: absent

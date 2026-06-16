@@ -1,5 +1,10 @@
 ---
-# Handler to restart Redis service
+# Redis Role Handlers
+
 - name: restart redis
-  shell: "redis-server /etc/redis/redis.conf --daemonize yes"
+  shell: /etc/init.d/redis-server restart
   listen: "restart redis"
+
+- name: stop redis
+  shell: /etc/init.d/redis-server stop || true
+  listen: "stop redis"

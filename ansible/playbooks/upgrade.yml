@@ -1,47 +1,159 @@
 ---
-- name: Upgrade Target Node Software Version
-  hosts: "{{ target_host }}"
-  gather_facts: no
+# Upgrade Playbook
+# Performs rolling upgrade of Redis cluster nodes
+# Upgrades replicas first, then masters with failover
+# Usage: ansible-playbook playbooks/upgrade.yml -e "target_version=7.2.6 upgrade_node=redis-node-4"
+
+- name: Upgrade Single Redis Node
+  hosts: "{{ upgrade_node }}"
+  become: yes
+  serial: 1
   vars:
-    redis_version: "7.2.6"
+    redis_version: "{{ target_version }}"
+    redis_install_dir: "/opt/redis"
+    redis_port: 6379
+    redis_user: "redis"
+    redis_group: "redis"
+    redis_dir: "/var/lib/redis"
+    redis_log_dir: "/var/log/redis"
   tasks:
-    - name: Create backup of current binary
-      copy:
-        src: /usr/local/bin/redis-server
-        dest: /usr/local/bin/redis-server.backup
-        remote_src: yes
+    - name: Check current Redis version
+      command: "{{ redis_install_dir }}/bin/redis-server --version"
+      register: current_version
+      changed_when: false
+
+    - name: Display current version
+      debug:
+        msg: "Current version on {{ inventory_hostname }}: {{ current_version.stdout }}"
+
+    - name: Stop Redis gracefully with SAVE
+      shell: |
+        {{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} BGSAVE || true
+        sleep 2
+        /etc/init.d/redis-server stop || true
+        sleep 1
       ignore_errors: yes
 
-    - name: Download New Redis Version Source
-      get_url:
-        url: "https://download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
-        dest: "/tmp/redis-{{ redis_version }}.tar.gz"
+    - name: Wait for Redis to stop
+      wait_for:
+        host: "127.0.0.1"
+        port: "{{ redis_port }}"
+        state: stopped
+        timeout: 30
 
-    - name: Extract New Redis Source Code
+    - name: Install build dependencies
+      apt:
+        name:
+          - build-essential
+          - tcl
+          - pkg-config
+          - wget
+          - tar
+        state: present
+        update_cache: no
+
+    - name: Create build directory
+      file:
+        path: /tmp/redis-build
+        state: directory
+        mode: "0755"
+
+    - name: Download new Redis version on host
+      delegate_to: localhost
+      become: no
+      get_url:
+        url: "https://download.redis.io/releases/redis-{{ target_version }}.tar.gz"
+        dest: "/tmp/redis-{{ target_version }}.tar.gz"
+        mode: "0644"
+        timeout: 120
+      run_once: true
+
+    - name: Copy new Redis version to remote node
+      copy:
+        src: "/tmp/redis-{{ target_version }}.tar.gz"
+        dest: "/tmp/redis-build/redis-{{ target_version }}.tar.gz"
+        mode: "0644"
+
+    - name: Extract Redis source
       unarchive:
-        src: "/tmp/redis-{{ redis_version }}.tar.gz"
-        dest: "/tmp"
+        src: "/tmp/redis-build/redis-{{ target_version }}.tar.gz"
+        dest: "/tmp/redis-build/"
         remote_src: yes
 
-    - name: Compile and Install New Version
+    - name: Build Redis from source
       shell: |
-        cd /tmp/redis-{{ redis_version }}
-        make && make install
+        cd /tmp/redis-build/redis-{{ target_version }}
+        make distclean || true
+        make -j$(nproc) BUILD_TLS=no
       args:
-        creates: "/tmp/redis-{{ redis_version }}/src/redis-server"
+        creates: "/tmp/redis-build/redis-{{ target_version }}/src/redis-server"
 
-    - name: Wait for Redis to rejoin cluster
+    - name: Install Redis binaries
+      shell: |
+        cd /tmp/redis-build/redis-{{ target_version }}
+        make install PREFIX={{ redis_install_dir }}
+
+    - name: Update symlinks
+      file:
+        src: "{{ redis_install_dir }}/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        state: link
+        force: yes
+      loop:
+        - redis-server
+        - redis-cli
+        - redis-benchmark
+        - redis-check-aof
+        - redis-check-rdb
+
+    - name: Start Redis with existing config
+      shell: |
+        /etc/init.d/redis-server start
+        sleep 2
+      changed_when: true
+
+    - name: Wait for Redis to start
       wait_for:
-        host: "{{ inventory_hostname }}"
-        port: 6379
+        host: "0.0.0.0"
+        port: "{{ redis_port }}"
         delay: 2
         timeout: 30
-      retries: 3
-      delay: 2
+        state: started
 
-    - name: Verify cluster state after upgrade
-      shell: "redis-cli cluster info | grep cluster_state"
-      register: cluster_state_after
-      retries: 5
-      until: "'ok' in cluster_state_after.stdout"
+    - name: Verify Redis is responding
+      command: "{{ redis_install_dir }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port }} ping"
+      register: redis_ping
+      until: redis_ping.stdout == "PONG"
+      retries: 10
       delay: 2
+      changed_when: false
+
+    - name: Verify new version
+      command: "{{ redis_install_dir }}/bin/redis-server --version"
+      register: new_version
+      changed_when: false
+
+    - name: Display new version
+      debug:
+        msg: "Upgraded {{ inventory_hostname }} to: {{ new_version.stdout }}"
+
+    - name: Clean up build artifacts
+      file:
+        path: "/tmp/redis-build"
+        state: absent
+
+- name: Verify cluster health after node upgrade
+  hosts: redis-node-1
+  become: yes
+  tasks:
+    - name: Wait for cluster to reconverge
+      shell: "{{ redis_install_dir | default('/opt/redis') }}/bin/redis-cli -h 127.0.0.1 -p {{ redis_port | default(6379) }} cluster info | grep cluster_state"
+      register: cluster_state
+      until: "'cluster_state:ok' in cluster_state.stdout"
+      retries: 60
+      delay: 3
+      changed_when: false
+
+    - name: Display cluster state
+      debug:
+        msg: "Cluster state after upgrading {{ upgrade_node }}: {{ cluster_state.stdout }}"

@@ -1,31 +1,135 @@
 ---
-- name: Install and Configure Redis on All Nodes
-  hosts: redis_nodes
-  gather_facts: yes
-  roles:
-    - redis
+# Provision Playbook
+# Installs Redis on all cluster nodes and forms the cluster
+# Usage: ansible-playbook playbooks/provision.yml -e "redis_version=7.0.15"
 
-- name: Initialize and Form Redis Cluster
-  hosts: redis-node-1
-  gather_facts: no
+- name: Provision Redis Cluster Nodes
+  hosts: redis_cluster
+  become: yes
+  vars:
+    redis_version: "{{ redis_version_override | default('7.0.15') }}"
+  roles:
+    - role: redis
+      vars:
+        redis_version: "{{ redis_version_override | default('7.0.15') }}"
+
+- name: Prepare Nodes for Cluster Formation
+  hosts: redis_cluster
+  become: yes
   tasks:
-    - name: Check if cluster is already formed
-      shell: "redis-cli cluster info"
-      register: cluster_info
+    - name: Check if this node is already in a cluster
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster info
+      register: node_cluster_info
+      changed_when: false
       ignore_errors: yes
 
-    - name: Form the 6-node Redis cluster (3 Masters + 3 Replicas)
+    - name: Check cluster_state from node info
+      set_fact:
+        node_in_cluster: "{{ 'cluster_state:ok' in (node_cluster_info.stdout | default('')) }}"
+
+    - name: Stop Redis for reset (when not already in a healthy cluster)
+      shell: /etc/init.d/redis-server stop || true
+      when: not node_in_cluster | bool
+      ignore_errors: true
+
+    - name: Kill any remaining Redis processes
+      shell: pkill -9 -f redis-server || true
+      when: not node_in_cluster | bool
+      ignore_errors: true
+
+    - name: Wait for Redis port to be free
+      wait_for:
+        port: 6379
+        state: stopped
+        timeout: 10
+      when: not node_in_cluster | bool
+      ignore_errors: true
+
+    - name: Delete all persisted Redis data files
+      file:
+        path: /var/lib/redis
+        state: absent
+      when: not node_in_cluster | bool
+
+    - name: Recreate Redis data directory
+      file:
+        path: /var/lib/redis
+        state: directory
+        owner: redis
+        group: redis
+        mode: '0750'
+      when: not node_in_cluster | bool
+
+    - name: Start Redis fresh
+      shell: /etc/init.d/redis-server start
+      when: not node_in_cluster | bool
+
+    - name: Wait for Redis to be ready
+      wait_for:
+        host: 127.0.0.1
+        port: 6379
+        delay: 1
+        timeout: 30
+        state: started
+
+    - name: Verify Redis is responding with PONG
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 ping
+      register: ping_result
+      until: "'PONG' in ping_result.stdout"
+      retries: 10
+      delay: 2
+      changed_when: false
+
+    - name: Verify node sees itself as standalone (no cluster peers)
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster info
+      register: final_check
+      changed_when: false
+
+    - name: Set node ready for cluster formation
+      set_fact:
+        node_ready_for_cluster: "{{ 'cluster_state:ok' not in (final_check.stdout | default('')) }}"
+
+- name: Form Redis Cluster
+  hosts: redis-node-1
+  become: yes
+  vars:
+    replicas_per_master: "{{ replicas_per_master_override | default(1) }}"
+  tasks:
+    - name: Check if cluster already exists
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster info
+      register: pre_cluster_check
+      changed_when: false
+
+    - name: Form Redis Cluster
       shell: |
-        redis-cli --cluster create \
-        10.10.0.11:6379 10.10.0.12:6379 10.10.0.13:6379 \
-        10.10.0.14:6379 10.10.0.15:6379 10.10.0.16:6379 \
-        --cluster-replicas 1 --cluster-yes
-      when: "'cluster_state:ok' not in cluster_info.stdout"
+        /opt/redis/bin/redis-cli --cluster create \
+          10.250.0.11:6379 \
+          10.250.0.12:6379 \
+          10.250.0.13:6379 \
+          10.250.0.14:6379 \
+          10.250.0.15:6379 \
+          10.250.0.16:6379 \
+          --cluster-replicas {{ replicas_per_master }} --cluster-yes
+      register: cluster_create_result
+      when: "'cluster_state:ok' not in pre_cluster_check.stdout"
 
-    - name: Print final cluster layout topology
-      shell: "redis-cli cluster nodes"
-      register: cluster_topology
-
-    - name: Display Cluster Topology
+    - name: Display cluster creation result
       debug:
-        msg: "{{ cluster_topology.stdout_lines }}"
+        msg: "{{ cluster_create_result.stdout_lines | default(['Cluster already formed - skipped']) }}"
+
+    - name: Wait for cluster to stabilize
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster info
+      register: cluster_state
+      until: "'cluster_state:ok' in cluster_state.stdout"
+      retries: 30
+      delay: 2
+      changed_when: false
+
+    - name: Get cluster topology
+      command: /opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster nodes
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Display cluster topology
+      debug:
+        msg: "{{ cluster_nodes.stdout_lines }}"

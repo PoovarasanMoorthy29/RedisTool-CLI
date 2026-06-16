@@ -1,628 +1,287 @@
 # Redis Cluster Lifecycle Tool
 
-A comprehensive DevOps tool for managing Redis cluster lifecycle operations including provisioning, data seeding, verification, and zero-downtime rolling upgrades. Built with Python, Ansible, and Docker/Podman for container orchestration.
+A CLI tool that provisions, operates, and performs **zero-downtime rolling upgrades** on a 6-node Redis Cluster (3 masters + 3 replicas) running in containers with Ansible automation.
 
-## Table of Contents
+---
 
-- [Features](#features)
+## 📋 Table of Contents
+
+- [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Infrastructure](#infrastructure)
-- [CLI Commands](#cli-commands)
-- [Project Structure](#project-structure)
-- [Docker Usage](#docker-usage)
-- [Podman Usage](#podman-usage)
+- [Commands Reference](#commands-reference)
 - [Rolling Upgrade Strategy](#rolling-upgrade-strategy)
-- [Troubleshooting](#troubleshooting)
+- [Project Structure](#project-structure)
+- [Assumptions & Trade-offs](#assumptions--trade-offs)
+- [Known Limitations](#known-limitations)
 
-## Features
+---
 
-- ✅ **6-Node Redis Cluster** with 3 masters and configurable replicas
-- ✅ **SSH-based deployment** with Ansible automation
-- ✅ **Container runtime flexibility** - Docker or Podman
-- ✅ **Deterministic data seeding** with SHA256 hashing
-- ✅ **Comprehensive cluster verification** - health, data integrity, topology
-- ✅ **Zero-downtime rolling upgrades** with automated failover
-- ✅ **Structured logging** with JSON output
-- ✅ **Static IP addressing** (10.10.0.0/24 subnet)
-- ✅ **Idempotent operations** - safe to run multiple times
+## 🏗 Architecture
 
-## Prerequisites
-
-### System Requirements
-
-- **Ubuntu/Debian**: 18.04 LTS or newer
-- **RHEL/CentOS**: 7.x or newer
-- **4GB+ RAM** (8GB recommended for development)
-- **10GB+ disk space**
-
-### Required Software
-
-Before using this tool, ensure you have:
-
-1. **Docker or Podman**
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get update
-   sudo apt-get install -y docker.io podman
-   
-   # RHEL/CentOS
-   sudo yum install -y docker podman
-   
-   # macOS
-   brew install docker podman
-   ```
-
-2. **Ansible >= 2.14**
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install -y ansible
-   
-   # RHEL/CentOS
-   sudo yum install -y ansible
-   
-   # Via pip (all platforms)
-   pip install ansible>=2.14
-   ```
-
-3. **Python 3.8+** with redis-py
-   ```bash
-   pip install redis
-   ```
-
-4. **SSH keys generated**
-   ```bash
-   ssh-keygen -f infra/id_rsa -N ""
-   ```
-
-### Verification
-
-Check that all prerequisites are installed:
-
-```bash
-podman --version    # or docker --version
-ansible --version
-python3 --version
-redis-cli --version
+```
+┌─────────────────────────────────────────────────────────┐
+│                    redis-tool CLI                       │
+│         (Bash orchestrator, entry point)                │
+└──────────┬──────────┬──────────┬───────────┬────────────┘
+           │          │          │           │
+     ┌─────▼──┐ ┌────▼────┐ ┌──▼───┐ ┌────▼─────┐
+     │Provision│ │ Upgrade │ │Status│ │Data Seed │
+     │  Flow   │ │  Flow   │ │Check │ │& Verify  │
+     └────┬────┘ └────┬────┘ └──┬───┘ └────┬─────┘
+          │           │         │           │
+          ▼           ▼         ▼           ▼
+    ┌─────────────────────────────────────────────┐
+    │          Ansible Playbooks & Roles           │
+    │  provision.yml | upgrade.yml | status.yml    │
+    │  seed.yml      | verify.yml                  │
+    └──────────────────┬──────────────────────────-┘
+                       │ SSH (key-based)
+          ┌────────────┼────────────────┐
+          ▼            ▼                ▼
+   ┌────────────┬────────────┬────────────┐
+   │redis-node-1│redis-node-2│redis-node-3│  Masters
+   │ 10.10.0.11 │ 10.10.0.12│ 10.10.0.13 │
+   ├────────────┼────────────┼────────────┤
+   │redis-node-4│redis-node-5│redis-node-6│  Replicas
+   │ 10.10.0.14 │ 10.10.0.15│ 10.10.0.16 │
+   └────────────┴────────────┴────────────┘
+         Docker/Podman containers on 10.10.0.0/24
 ```
 
-## Quick Start
+---
 
-### 1. Setup
+## ✅ Prerequisites
+
+The tool auto-detects and validates prerequisites on every run:
+
+| Tool | Minimum Version | Notes |
+|------|----------------|-------|
+| Docker or Podman | Any recent | Podman preferred if both exist |
+| docker-compose / podman-compose | v2+ | For container orchestration |
+| Ansible | 2.14+ | For configuration management |
+| SSH client | Any | For key-based container access |
+| Bash | 4.0+ | CLI entry point |
+
+### Installing Prerequisites
 
 ```bash
-# Clone or navigate to the project
-cd /path/to/RedisTool-CLI
+# Docker (Ubuntu/Debian)
+curl -fsSL https://get.docker.com | sh
 
-# Make the CLI executable
+# Ansible
+pip3 install ansible>=2.14
+
+# Podman (alternative to Docker)
+sudo apt install podman podman-compose
+```
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# 1. Make the CLI executable
 chmod +x redis-tool
 
-# Generate SSH keys (if not present)
-ssh-keygen -f infra/id_rsa -N ""
+# 2. Provision a 6-node cluster with Redis 7.0.15
+./redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
+
+# 3. Seed 1000 deterministic test keys
+./redis-tool data seed --keys 1000
+
+# 4. Verify data integrity
+./redis-tool data verify
+
+# 5. Check cluster status
+./redis-tool status
+
+# 6. Perform zero-downtime rolling upgrade to 7.2.6
+./redis-tool upgrade --target-version 7.2.6 --strategy rolling
+
+# 7. Full post-upgrade verification
+./redis-tool verify --full
 ```
 
-### 2. Build and Start Containers
+---
 
-```bash
-# Using Docker Compose (with Docker)
-docker-compose -f infra/compose.yml up -d
+## 📖 Commands Reference
 
-# Using Podman Compose (with Podman)
-podman-compose -f infra/compose.yml up -d
-```
-
-### 3. Provision Redis Cluster
+### `provision`
+Brings up 6 Ubuntu containers, installs Redis from source, and forms the cluster.
 
 ```bash
 ./redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
 ```
 
-### 4. Seed Test Data
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--version` | 7.0.15 | Redis version to install |
+| `--masters` | 3 | Number of master nodes |
+| `--replicas-per-master` | 1 | Replicas per master |
+
+### `data seed`
+Inserts deterministic key-value pairs where value = SHA256(key).
 
 ```bash
 ./redis-tool data seed --keys 1000
 ```
 
-### 5. Verify Cluster
+### `data verify`
+Reads all keys, recomputes expected SHA256 values, compares, reports PASS/FAIL.
+
+```bash
+./redis-tool data verify --keys 1000
+```
+
+### `status`
+Prints cluster info: nodes, roles, slots, keys, memory, cluster state.
 
 ```bash
 ./redis-tool status
+```
+
+### `upgrade`
+Zero-downtime rolling upgrade with automatic failover orchestration.
+
+```bash
+./redis-tool upgrade --target-version 7.2.6 --strategy rolling
+```
+
+### `verify --full`
+Comprehensive verification: data integrity, version consistency, topology, slots, replication lag.
+
+```bash
 ./redis-tool verify --full
 ```
 
-## Infrastructure
-
-### Network Configuration
-
-```
-Network: 10.10.0.0/24
-Driver: Bridge (compatible with Docker and Podman)
-
-Nodes:
-├── redis-node-1: 10.10.0.11:6379 (Master)
-├── redis-node-2: 10.10.0.12:6379 (Master)
-├── redis-node-3: 10.10.0.13:6379 (Master)
-├── redis-node-4: 10.10.0.14:6379 (Replica of node-1)
-├── redis-node-5: 10.10.0.15:6379 (Replica of node-2)
-└── redis-node-6: 10.10.0.16:6379 (Replica of node-3)
-```
-
-### Node Configuration
-
-Each node runs:
-- **Ubuntu 22.04 LTS** base image
-- **SSH Server** for Ansible access
-- **Redis** (compiled from source to requested version)
-- **Python3** for automation
-
-### Cluster Setup
-
-- **Cluster Mode**: Enabled
-- **Replication**: 3 masters + 3 replicas (1:1 ratio)
-- **Slot Distribution**: 5,462 slots per master
-- **Node Timeout**: 5000ms
-- **Cluster Persistence**: Enabled (AOF)
-
-## CLI Commands
-
-### Global Options
-
-All commands check prerequisites before execution and provide installation instructions if dependencies are missing.
-
-### provision
-
-Provision a new Redis cluster with specified topology.
+### `infra`
+Manage container infrastructure directly.
 
 ```bash
-./redis-tool provision --version <VERSION> [--masters <N>] [--replicas-per-master <N>]
-
-Options:
-  --version              Redis version (e.g., 7.0.15, 7.2.6)
-  --masters              Number of master nodes (default: 3)
-  --replicas-per-master  Replicas per master (default: 1)
-
-Example:
-  ./redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
+./redis-tool infra up    # Bring up containers
+./redis-tool infra down  # Tear down containers + volumes
 ```
 
-**Output**: Provision log saved to `logs/provision.log`
+---
 
-### data seed
+## 🔄 Rolling Upgrade Strategy
 
-Seed the cluster with deterministic test data.
+The upgrade follows a **replica-first, master-failover** strategy to achieve zero downtime:
 
-```bash
-./redis-tool data seed [--keys <N>]
+### Phase 1: Pre-flight Checks
+- Verify cluster state is `ok`
+- Ping all 6 nodes for reachability
+- Run baseline data verification (all 1000 keys intact)
 
-Options:
-  --keys  Number of keys to seed (default: 1000)
+### Phase 2: Upgrade Replicas (one-by-one)
+For each replica node:
+1. **Stop** Redis gracefully (`BGSAVE` → `SHUTDOWN SAVE`)
+2. **Download & build** new Redis version from source
+3. **Install** new binaries, preserving config and data
+4. **Start** Redis with existing cluster config
+5. **Wait** for node to rejoin cluster
+6. **Verify** cluster returns to `cluster_state:ok`
+7. **Proceed** to next replica only after health check passes
 
-Example:
-  ./redis-tool data seed --keys 1000
-```
+### Phase 3: Upgrade Masters (with failover)
+For each master node:
+1. **Identify** the master's replica
+2. **CLUSTER FAILOVER** — send to the replica, promoting it to master
+3. **Wait** for failover completion (replica reports `role:master`)
+4. **Verify** cluster is healthy after role swap
+5. **Upgrade** the old master (now a replica) — same stop/build/install/start cycle
+6. **Wait** for cluster convergence
+7. **Verify** cluster health before proceeding to next master
 
-**Data Format**: 
-- Keys: `key:0001`, `key:0002`, ..., `key:1000`
-- Values: SHA256 hash of the key name
-- Deterministic: Same key always produces same value
+### Phase 4: Post-upgrade Verification
+- Data integrity check (all 1000 keys)
+- Version consistency (all nodes at target version)
+- Full cluster status report
 
-### data verify
+### Why Zero Downtime?
+- **Replicas first**: upgrading a replica doesn't affect write availability
+- **Failover before master upgrade**: the promoted replica serves traffic while the old master upgrades
+- **One node at a time**: cluster maintains quorum throughout
+- **Health gates**: no progression until cluster reports `ok`
+- **Fail-fast**: any failure stops the entire process immediately
 
-Verify data integrity of seeded data.
+---
 
-```bash
-./redis-tool data verify
-```
-
-**Output**: 
-```
-✓ PASS: 1000/1000 keys verified successfully!
-# or
-✗ FAIL: X keys missing or corrupted.
-```
-
-### status
-
-Display detailed cluster status.
-
-```bash
-./redis-tool status
-```
-
-**Output**:
-```
-Cluster State: ok
-Redis Version: 7.0.15
-Total Nodes: 6
-
-MASTERS:
-  10.10.0.11:6379
-    Role: master
-    Slots: 0-5461
-    Keys: 334
-    Memory: 2.45M
-
-REPLICAS:
-  10.10.0.14:6379
-    Role: replica
-    Keys: 334
-    Memory: 2.45M
-```
-
-### verify
-
-Verify cluster health.
-
-```bash
-./redis-tool verify [--full]
-
-Options:
-  --full  Perform comprehensive health check including all subsystems
-
-Example:
-  ./redis-tool verify --full
-```
-
-**Output**:
-```
-FULL CLUSTER VERIFICATION
-
-1. Checking cluster state...
-   ✓ Cluster state: OK
-
-2. Checking node reachability...
-   ✓ redis-node-1: OK
-   ✓ redis-node-2: OK
-   ...
-
-3. Checking slot coverage...
-   ✓ All 16384 slots covered
-
-4. Checking version consistency...
-   ✓ All nodes running same version: 7.0.15
-
-5. Checking replication status...
-   ✓ Masters: 3, Replicas: 3
-
-6. Checking data integrity...
-   ✓ All 1000/1000 keys verified successfully!
-
-✓ FULL VERIFICATION PASSED
-```
-
-### upgrade
-
-Perform zero-downtime rolling upgrade of the cluster.
-
-```bash
-./redis-tool upgrade --target-version <VERSION> [--strategy <STRATEGY>]
-
-Options:
-  --target-version  Target Redis version (e.g., 7.2.6)
-  --strategy        Upgrade strategy: rolling (default)
-
-Example:
-  ./redis-tool upgrade --target-version 7.2.6 --strategy rolling
-```
-
-**Output**: Upgrade progress with phase completion indicators
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 RedisTool-CLI/
-├── redis-tool                          # Main CLI tool (Python)
-├── infra/
-│   ├── compose.yml                     # Docker/Podman compose file
-│   ├── Dockerfile                      # Ubuntu-based Redis container
-│   ├── id_rsa                          # SSH private key (generated)
-│   └── id_rsa.pub                      # SSH public key (generated)
+├── redis-tool                    ← CLI executable (Bash)
 ├── ansible/
-│   ├── ansible.cfg                     # Ansible configuration
+│   ├── ansible.cfg               ← Ansible configuration
 │   ├── inventory/
-│   │   └── hosts.ini                   # Node inventory with IPs
+│   │   └── hosts.ini             ← 6 fixed IPs (10.10.0.11–16)
 │   ├── playbooks/
-│   │   ├── provision.yml               # Initial provisioning playbook
-│   │   ├── upgrade.yml                 # Node upgrade playbook
-│   │   ├── status.yml                  # Status check playbook
-│   │   ├── verify.yml                  # Verification playbook
-│   │   └── seed.yml                    # Data seeding reference
-│   └── roles/
-│       └── redis/
-│           ├── tasks/
-│           │   └── main.yml            # Role tasks (install, configure)
-│           ├── handlers/
-│           │   └── main.yml            # Service restart handlers
-│           ├── defaults/
-│           │   └── main.yml            # Default variables
-│           └── templates/
-│               └── redis.conf.j2       # Redis configuration template
-├── output/
-│   ├── provision_output.txt            # Provision command output
-│   ├── data_seed_output.txt            # Data seeding output
-│   ├── status_output.txt               # Status command output
-│   ├── verify_output.txt               # Verification output
-│   └── upgrade_output.txt              # Upgrade output
-├── logs/                               # Structured JSON logs
-│   ├── provision.log
-│   ├── seed.log
-│   ├── status.log
-│   ├── verify.log
-│   ├── upgrade.log
-│   └── verify_full.log
-└── README.md                           # This file
+│   │   ├── provision.yml         ← Install Redis + form cluster
+│   │   ├── upgrade.yml           ← Upgrade single node
+│   │   ├── status.yml            ← Cluster status report
+│   │   ├── seed.yml              ← Insert deterministic data
+│   │   └── verify.yml            ← Verify data integrity
+│   └── roles/redis/
+│       ├── tasks/main.yml        ← Build Redis from source
+│       ├── handlers/main.yml     ← Restart/stop handlers
+│       ├── templates/
+│       │   ├── redis.conf.j2     ← Redis cluster config
+│       │   └── redis.service.j2  ← Init script
+│       └── defaults/main.yml     ← Default variables
+├── infra/
+│   ├── Dockerfile                ← Ubuntu + SSH container
+│   └── compose.yml               ← 6 containers, static IPs
+├── README.md                     ← This file
+├── output/                       ← Command output logs
+│   ├── provision_output.txt
+│   ├── upgrade_output.txt
+│   └── verify_output.txt
+└── logs/                         ← Runtime logs
 ```
 
-## Docker Usage
+---
 
-### Prerequisites
+## ⚠️ Assumptions & Trade-offs
 
-```bash
-# Ensure Docker is running
-sudo systemctl start docker
+| Assumption | Rationale |
+|-----------|-----------|
+| Redis built from source | Ensures exact version control; no distro package lag |
+| Ubuntu 22.04 containers | Stable LTS with good build toolchain |
+| SSH key-based auth only | Security best practice; no password leaks |
+| `cluster-announce-ip` per node | Required for Docker networking to work with Redis Cluster |
+| Python3 on containers | Used for seed/verify scripts; pre-installed on Ubuntu |
+| `appendonly yes` | Durability during upgrades; survives restart |
+| `maxmemory 256mb` | Sufficient for testing; adjustable via role defaults |
+| Single-threaded seed/verify | Simplicity over speed; uses `-c` flag for cluster routing |
 
-# Or use Docker Desktop on macOS/Windows
-```
+---
 
-### Build and Run
+## ⚡ Known Limitations
 
-```bash
-# Build images and start containers
-docker-compose -f infra/compose.yml up -d
+1. **Build time**: Compiling Redis from source takes 1-3 minutes per node on first provision
+2. **No TLS**: Cluster communication is unencrypted (suitable for isolated Docker network)
+3. **No persistence migration**: Upgrading assumes RDB/AOF format compatibility between versions
+4. **Sequential upgrades**: Nodes upgraded one at a time (safe but slower)
+5. **Fixed topology**: Initial cluster always uses nodes 1-3 as masters, 4-6 as replicas
+6. **No automatic rollback**: If upgrade fails mid-way, manual intervention needed (see stretch goals)
+7. **Host networking**: Uses Docker bridge network, not host networking
 
-# List running containers
-docker-compose -f infra/compose.yml ps
+---
 
-# View logs
-docker-compose -f infra/compose.yml logs -f redis-node-1
+## 🎯 Stretch Goals Status
 
-# Stop and remove containers
-docker-compose -f infra/compose.yml down
+| Goal | Status | Notes |
+|------|--------|-------|
+| S1: Scale add nodes | ❌ Not implemented | Would use `redis-cli --cluster add-node` + `rebalance` |
+| S2: Scale remove node | ❌ Not implemented | Would use `redis-cli --cluster del-node` + slot migration |
+| S3: Rollback | ❌ Not implemented | Would reverse the upgrade process |
+| S4: Idempotency | ✅ Partial | Provision checks if cluster already formed; skips if so |
+| S5: Structured logging | ✅ Partial | Output captured to `output/` directory with timestamps |
 
-# Remove volumes (WARNING: deletes all data)
-docker-compose -f infra/compose.yml down -v
-```
+---
 
-### Manual Container Commands
+## 📝 License
 
-```bash
-# Execute command in container
-docker exec redis-node-1 redis-cli cluster info
-
-# Access container shell
-docker exec -it redis-node-1 bash
-
-# View container resource usage
-docker stats redis-node-1
-
-# Inspect container
-docker inspect redis-node-1 | grep -E '"IPAddress"'
-```
-
-## Podman Usage
-
-### Prerequisites
-
-```bash
-# Start Podman service (on Linux)
-sudo systemctl start podman
-
-# Note: Podman on macOS/Windows requires a VM
-```
-
-### Build and Run
-
-```bash
-# Build images and start containers
-podman-compose -f infra/compose.yml up -d
-
-# List running containers
-podman-compose -f infra/compose.yml ps
-
-# View logs
-podman-compose -f infra/compose.yml logs -f redis-node-1
-
-# Stop and remove containers
-podman-compose -f infra/compose.yml down
-```
-
-### Key Differences from Docker
-
-- **Rootless**: Podman runs containers without root by default (more secure)
-- **Pod Management**: Podman uses pods similar to Kubernetes
-- **Compatibility**: Full Docker Compose compatibility
-
-### Manual Container Commands
-
-```bash
-# Execute command in container
-podman exec redis-node-1 redis-cli cluster info
-
-# Access container shell
-podman exec -it redis-node-1 bash
-
-# List networks
-podman network ls
-
-# Inspect network
-podman network inspect redis_net
-```
-
-## Rolling Upgrade Strategy
-
-The tool implements a safe, zero-downtime rolling upgrade strategy:
-
-### Phase 1: Pre-flight Checks
-1. Verify cluster state is OK
-2. Verify all nodes are reachable
-3. Verify data integrity
-4. Abort if any check fails
-
-### Phase 2: Upgrade Replicas (sequential)
-1. For each replica node (redis-node-4, 5, 6):
-   - Stop Redis gracefully
-   - Download and compile new version
-   - Start Redis with new binary
-   - Wait for node to rejoin cluster
-   - Verify cluster state returns to OK
-
-### Phase 3: Upgrade Masters (with failover)
-1. For each master node (redis-node-1, 2, 3):
-   - Trigger CLUSTER FAILOVER (promotes replica, demotes master)
-   - Wait for promotion to complete
-   - Stop Redis on old master (now replica)
-   - Download and compile new version
-   - Start Redis
-   - Wait for node to rejoin cluster as replica
-   - Verify cluster state returns to OK
-
-### Phase 4: Post-upgrade Verification
-1. Run full cluster verification
-2. Verify all data integrity
-3. Confirm all nodes running target version
-4. Display upgrade completion summary
-
-### Safety Features
-- **Automatic Rollback**: Stops immediately if any node fails to upgrade
-- **Data Protection**: Graceful shutdown with NOSAVE to preserve data
-- **Replication Verification**: Waits for cluster state OK before proceeding
-- **Comprehensive Logging**: All operations logged with timestamps
-
-## Assumptions
-
-1. **Network Connectivity**: SSH access from host to containers via 10.10.0.0/24 network
-2. **Container Runtime**: Either Docker or Podman is available
-3. **Ansible Installation**: Ansible >= 2.14 installed on host
-4. **Python 3.8+**: Required for redis-py library
-5. **Root/Sudo Access**: Required for container operations (docker/podman groups)
-6. **SSH Keys**: Must be generated before provisioning (`ssh-keygen -f infra/id_rsa -N ""`)
-
-## Limitations
-
-1. **Single Physical Host**: All 6 nodes run on same machine
-2. **Development Use**: Not recommended for production without modification
-3. **Storage**: Data persisted only during container runtime (AOF mode)
-4. **Networking**: Containers can only communicate via container network (10.10.0.0/24)
-5. **Scaling**: Cluster size is fixed at 6 nodes (can be modified in compose.yml)
-6. **Upgrade Strategy**: Currently only supports "rolling" strategy
-
-## Troubleshooting
-
-### Issue: "Missing prerequisites" error
-
-**Solution**: Install missing software
-```bash
-# Install Docker
-sudo apt-get install -y docker.io
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Install Ansible
-sudo apt-get install -y ansible
-
-# Install Python Redis
-pip install redis
-```
-
-### Issue: Container fails to start
-
-**Solution**: Check Docker/Podman logs
-```bash
-docker-compose -f infra/compose.yml logs redis-node-1
-# or
-podman-compose -f infra/compose.yml logs redis-node-1
-```
-
-### Issue: SSH connection refused
-
-**Solution**: Ensure SSH keys exist and containers are running
-```bash
-# Generate SSH keys
-ssh-keygen -f infra/id_rsa -N ""
-
-# Verify containers are running
-docker-compose -f infra/compose.yml ps
-# or
-podman-compose -f infra/compose.yml ps
-
-# Test SSH manually
-ssh -i infra/id_rsa root@10.10.0.11
-```
-
-### Issue: Cluster not forming
-
-**Solution**: 
-1. Wait for containers to fully start (30-60 seconds)
-2. Verify all containers are running: `docker ps`
-3. Check Redis logs: `docker exec redis-node-1 tail /var/log/redis.log`
-4. Manually form cluster:
-   ```bash
-   docker exec redis-node-1 redis-cli --cluster create \
-     10.10.0.11:6379 10.10.0.12:6379 10.10.0.13:6379 \
-     10.10.0.14:6379 10.10.0.15:6379 10.10.0.16:6379 \
-     --cluster-replicas 1 --cluster-yes
-   ```
-
-### Issue: Data verification fails
-
-**Solution**: Check if data was seeded
-```bash
-./redis-tool data seed --keys 1000
-./redis-tool data verify
-```
-
-### Issue: Upgrade fails midway
-
-**Solution**: 
-1. Check logs: `cat logs/upgrade.log`
-2. Manually verify cluster state:
-   ```bash
-   docker exec redis-node-1 redis-cli cluster info
-   docker exec redis-node-1 redis-cli cluster nodes
-   ```
-3. If cluster is stuck, restart affected node:
-   ```bash
-   docker restart redis-node-X
-   ```
-
-## Logging
-
-All operations generate structured JSON logs in the `logs/` directory:
-
-```json
-{
-  "timestamp": "2025-06-15T10:30:45.123456",
-  "operation": "provision",
-  "level": "INFO",
-  "message": "Provision completed successfully"
-}
-```
-
-## Version Compatibility
-
-- **Redis**: 5.0+ (tested with 7.0.15, 7.2.6)
-- **Ansible**: 2.14+
-- **Python**: 3.8+
-- **Docker**: 20.10+
-- **Podman**: 3.0+
-
-## Performance Tuning
-
-For production-like testing:
-
-1. **Increase VM memory** to 16GB+
-2. **Adjust redis.conf parameters**:
-   ```
-   maxmemory 2gb
-   maxmemory-policy allkeys-lru
-   ```
-3. **Use separate storage** for each node
-4. **Monitor with**: `redis-cli --stat`
-
-## Support & Contribution
-
-For issues, questions, or contributions, refer to the project repository.
-
-## License
-
-Internal DevOps Tool - All Rights Reserved
+MIT
