@@ -11,7 +11,7 @@ This guide documents common errors, pre-flight check failures, and runtime issue
 4. [Ansible Not Found / Version Incompatible](#4-ansible-not-found--version-incompatible)
 5. [SSH Not Reachable after 30 Attempts](#5-ssh-not-reachable-after-30-attempts)
 6. [Pre-flight Cluster Health Check Failed](#6-pre-flight-cluster-health-check-failed)
-7. [Verification Failures (Replication Lag / Slot Coverage)](#7-verification-failures-replication-lag--slot-coverage)
+7. [Verification Failures (Replication Lag / Topology Health)](#7-verification-failures-replication-lag--topology-health)
 8. [Scaling Constraints / Configuration Errors](#8-scaling-constraints--configuration-errors)
 9. [Redis Download Failed (HTTP Error 404: Not Found)](#9-redis-download-failed-http-error-404-not-found)
 
@@ -189,7 +189,7 @@ Before performing topology-altering operations (like upgrading Redis versions or
 
 ---
 
-## 7. Verification Failures (Replication Lag / Slot Coverage)
+## 7. Verification Failures (Replication Lag / Topology Health)
 
 ### Error Message
 ```text

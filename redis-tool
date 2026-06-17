@@ -1189,20 +1189,38 @@ def cmd_verify(args):
     except Exception:
         results["Cluster State"] = False
 
-    log_step("4. Slot coverage...")
+    log_step("4. Topology health...")
     try:
-        slots_ok = False
+        topo_ok = False
+        slots_correct = False
         for line in info.splitlines():
             if "cluster_slots_ok" in line:
                 slots = line.split(":")[1].strip()
                 if slots == "16384":
-                    log_ok(f"Slot coverage: {slots}/16384")
-                    slots_ok = True
-                else:
-                    log_fail(f"Slot coverage: {slots}/16384")
-        results["Slot Coverage"] = slots_ok
-    except Exception:
-        results["Slot Coverage"] = False
+                    slots_correct = True
+        
+        # Check that every master has at least one replica
+        nodes = get_cluster_nodes()
+        masters = [n for n in nodes if n["role"] == "master"]
+        replicas = [n for n in nodes if n["role"] == "slave"]
+        
+        master_ids_with_replicas = {r["master_id"] for r in replicas if r["master_id"] != "-"}
+        all_masters_have_replicas = all(m["id"] in master_ids_with_replicas for m in masters) if masters else False
+        
+        if slots_correct and all_masters_have_replicas:
+            log_ok("Topology health: PASS (16384 slots covered, all masters have replicas)")
+            topo_ok = True
+        else:
+            reasons = []
+            if not slots_correct:
+                reasons.append("incomplete slot coverage")
+            if not all_masters_have_replicas:
+                reasons.append("some masters lack replicas")
+            log_fail(f"Topology health: FAIL ({', '.join(reasons)})")
+        results["Topology Health"] = topo_ok
+    except Exception as e:
+        log_fail(f"Topology health check failed: {e}")
+        results["Topology Health"] = False
 
     if args.full:
         log_step("5. Replication lag...")

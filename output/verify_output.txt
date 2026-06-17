@@ -70,28 +70,38 @@ Proceeding...
 [0;32m[INFO][0m  21:34:53   10.10.0.11 (redis-node-1): v7.2.6
 [0;32m[INFO][0m  21:34:54   10.10.0.12 (redis-node-2): v7.2.6
 [0;32m[INFO][0m  21:34:54   10.10.0.13 (redis-node-3): v7.2.6
-[0;32m[INFO][0m  21:34:55   10.10.0.14 (redis-node-4): v7.2.6
-[0;32m[INFO][0m  21:34:55   10.10.0.15 (redis-node-5): v7.2.6
-[0;32m[INFO][0m  21:34:55   10.10.0.16 (redis-node-6): v7.2.6
-[0;32m[✔][0m    Version consistency: PASS (all v7.2.6)
-[0;36m[STEP][0m  21:34:55 3. Cluster state...
-[0;32m[✔][0m    Cluster state: OK
-[0;36m[STEP][0m  21:34:56 4. Slot coverage...
-[0;32m[✔][0m    Slot coverage: 16384/16384
-[0;36m[STEP][0m  21:34:56 5. Replication lag...
-[0;32m[INFO][0m  21:34:56   10.10.0.11 (replica): master_link_status=up | slave_read_repl_offset:602449; slave_repl_offset:602449; master_repl_offset:602449; second_repl_offset:-1
-[0;32m[INFO][0m  21:34:56   10.10.0.12 (replica): master_link_status=up | slave_read_repl_offset:619642; slave_repl_offset:619642; master_repl_offset:619642; second_repl_offset:-1
-[0;32m[INFO][0m  21:34:57   10.10.0.13 (replica): master_link_status=up | slave_read_repl_offset:610295; slave_repl_offset:610295; master_repl_offset:610295; second_repl_offset:-1
-[0;32m[✔][0m    Replication lag: PASS — all replicas have master_link_status:up
+ [1m [0;34m════════════════════════════════════════════════════════════ [0m
+ [1m [0;34m  Full Cluster Verification [0m
+ [1m [0;34m════════════════════════════════════════════════════════════ [0m
 
-[1m[0;34m════════════════════════════════════════════════════════════[0m
-[1m[0;34m  Verification Summary[0m
-[1m[0;34m════════════════════════════════════════════════════════════[0m
+ [0;36m[STEP] [0m  21:34:44 1. Data integrity check...
+ [0;32m[✔] [0m    Data integrity: PASS
+ [0;36m[STEP] [0m  21:34:53 2. Version consistency...
+ [0;32m[INFO] [0m  21:34:53   10.10.0.11 (redis-node-1): v7.2.6
+ [0;32m[INFO] [0m  21:34:54   10.10.0.12 (redis-node-2): v7.2.6
+ [0;32m[INFO] [0m  21:34:54   10.10.0.13 (redis-node-3): v7.2.6
+ [0;32m[INFO] [0m  21:34:55   10.10.0.14 (redis-node-4): v7.2.6
+ [0;32m[INFO] [0m  21:34:55   10.10.0.15 (redis-node-5): v7.2.6
+ [0;32m[INFO] [0m  21:34:55   10.10.0.16 (redis-node-6): v7.2.6
+ [0;32m[✔] [0m    Version consistency: PASS (all v7.2.6)
+ [0;36m[STEP] [0m  21:34:55 3. Cluster state...
+ [0;32m[✔] [0m    Cluster state: OK
+ [0;36m[STEP] [0m  21:34:56 4. Topology health...
+ [0;32m[✔] [0m    Topology health: PASS (16384 slots covered, all masters have replicas)
+ [0;36m[STEP] [0m  21:34:56 5. Replication lag...
+ [0;32m[INFO] [0m  21:34:56   10.10.0.11 (replica): master_link_status=up | slave_read_repl_offset:602449; slave_repl_offset:602449; master_repl_offset:602449; second_repl_offset:-1
+ [0;32m[INFO] [0m  21:34:56   10.10.0.12 (replica): master_link_status=up | slave_read_repl_offset:619642; slave_repl_offset:619642; master_repl_offset:619642; second_repl_offset:-1
+ [0;32m[INFO] [0m  21:34:57   10.10.0.13 (replica): master_link_status=up | slave_read_repl_offset:610295; slave_repl_offset:610295; master_repl_offset:610295; second_repl_offset:-1
+ [0;32m[✔] [0m    Replication lag: PASS — all replicas have master_link_status:up
 
- - Cluster State            : [0;32mPASS[0m
- - Data Integrity           : [0;32mPASS[0m
- - Replication Lag          : [0;32mPASS[0m
- - Slot Coverage            : [0;32mPASS[0m
- - Version Consistency      : [0;32mPASS[0m
+ [1m [0;34m════════════════════════════════════════════════════════════ [0m
+ [1m [0;34m  Verification Summary [0m
+ [1m [0;34m════════════════════════════════════════════════════════════ [0m
 
-[0;32m[✔][0m    All checks passed!
+ - Cluster State            :  [0;32mPASS [0m
+ - Data Integrity           :  [0;32mPASS [0m
+ - Replication Lag          :  [0;32mPASS [0m
+ - Topology Health          :  [0;32mPASS [0m
+ - Version Consistency      :  [0;32mPASS [0m
+
+ [0;32m[✔] [0m    All checks passed!

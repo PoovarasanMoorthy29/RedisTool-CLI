@@ -2,7 +2,26 @@
 # Redis Role - Main Tasks
 # Installs Redis from source, configures cluster mode, and starts the service
 
-- name: Install build dependencies
+- name: Check if redis-server exists
+  stat:
+    path: "{{ redis_install_dir }}/bin/redis-server"
+  register: redis_server_bin
+
+- name: Get Redis version
+  command: "{{ redis_install_dir }}/bin/redis-server --version"
+  register: redis_installed_version
+  changed_when: false
+  when: redis_server_bin.stat.exists
+  ignore_errors: yes
+
+- name: Set Redis needs install fact
+  set_fact:
+    redis_needs_install: >-
+      {{ not redis_server_bin.stat.exists or
+         (redis_installed_version.stdout is not defined) or
+         (redis_version not in redis_installed_version.stdout) }}
+
+- name: Install build dependencies (on build host only)
   apt:
     name:
       - build-essential
@@ -14,6 +33,9 @@
     state: present
     update_cache: yes
     cache_valid_time: 3600
+  when:
+    - redis_needs_install | bool
+    - inventory_hostname == ansible_play_hosts[0]
 
 - name: Create redis group
   group:
@@ -39,30 +61,12 @@
     mode: "0755"
   loop:
     - "{{ redis_install_dir }}"
+    - "{{ redis_install_dir }}/bin"
     - "{{ redis_dir }}"
     - "{{ redis_log_dir }}"
     - "/var/run/redis"
     - "/etc/redis"
     - "/tmp/redis-build"
-
-- name: Check if redis-server exists
-  stat:
-    path: "{{ redis_install_dir }}/bin/redis-server"
-  register: redis_server_bin
-
-- name: Get Redis version
-  command: "{{ redis_install_dir }}/bin/redis-server --version"
-  register: redis_installed_version
-  changed_when: false
-  when: redis_server_bin.stat.exists
-  ignore_errors: yes
-
-- name: Set Redis needs install fact
-  set_fact:
-    redis_needs_install: >-
-      {{ not redis_server_bin.stat.exists or
-         (redis_installed_version.stdout is not defined) or
-         (redis_version not in redis_installed_version.stdout) }}
 
 - name: Download Redis source on host
   delegate_to: localhost
@@ -75,34 +79,83 @@
   run_once: true
   when: redis_needs_install | bool
 
-- name: Copy Redis source to remote nodes
+- name: Copy Redis source to build host
   copy:
     src: "/tmp/redis-{{ redis_version }}.tar.gz"
     dest: "/tmp/redis-build/redis-{{ redis_version }}.tar.gz"
     mode: "0644"
-  when: redis_needs_install | bool
+  when:
+    - redis_needs_install | bool
+    - inventory_hostname == ansible_play_hosts[0]
 
-- name: Extract Redis source
+- name: Extract Redis source on build host
   unarchive:
     src: "/tmp/redis-build/redis-{{ redis_version }}.tar.gz"
     dest: "/tmp/redis-build/"
     remote_src: yes
-  when: redis_needs_install | bool
+  when:
+    - redis_needs_install | bool
+    - inventory_hostname == ansible_play_hosts[0]
 
-- name: Build Redis from source
+- name: Build Redis from source on build host
   shell: |
     cd /tmp/redis-build/redis-{{ redis_version }}
     make distclean || true
+    make -C deps hiredis lua linenoise jemalloc
     make -j2 BUILD_TLS=no
-
   args:
     creates: "/tmp/redis-build/redis-{{ redis_version }}/src/redis-server"
+  when:
+    - redis_needs_install | bool
+    - inventory_hostname == ansible_play_hosts[0]
+
+- name: Create local temporary directory for binaries
+  delegate_to: localhost
+  become: no
+  file:
+    path: "/tmp/redis-binaries-{{ redis_version }}"
+    state: directory
+    mode: "0755"
+  run_once: true
   when: redis_needs_install | bool
 
-- name: Install Redis binaries
-  shell: |
-    cd /tmp/redis-build/redis-{{ redis_version }}
-    make install PREFIX={{ redis_install_dir }}
+- name: Fetch compiled binaries from build host to control host
+  fetch:
+    src: "/tmp/redis-build/redis-{{ redis_version }}/src/{{ item }}"
+    dest: "/tmp/redis-binaries-{{ redis_version }}/{{ item }}"
+    flat: yes
+  loop:
+    - redis-server
+    - redis-cli
+    - redis-benchmark
+    - redis-check-aof
+    - redis-check-rdb
+  when:
+    - redis_needs_install | bool
+    - inventory_hostname == ansible_play_hosts[0]
+
+- name: Copy Redis binaries to all nodes
+  copy:
+    src: "/tmp/redis-binaries-{{ redis_version }}/{{ item }}"
+    dest: "{{ redis_install_dir }}/bin/{{ item }}"
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0755"
+  loop:
+    - redis-server
+    - redis-cli
+    - redis-benchmark
+    - redis-check-aof
+    - redis-check-rdb
+  when: redis_needs_install | bool
+
+- name: Clean up temporary binaries on control host
+  delegate_to: localhost
+  become: no
+  file:
+    path: "/tmp/redis-binaries-{{ redis_version }}"
+    state: absent
+  run_once: true
   when: redis_needs_install | bool
 
 - name: Create Redis symlinks in /usr/local/bin

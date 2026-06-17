@@ -95,7 +95,8 @@
       shell: |
         cd /tmp/redis-build/redis-{{ target_version }}
         make distclean || true
-        make -j$(nproc) BUILD_TLS=no
+        make -C deps hiredis lua linenoise jemalloc
+        make -j2 BUILD_TLS=no
       args:
         creates: "/tmp/redis-build/redis-{{ target_version }}/src/redis-server"
       when: needs_upgrade | bool
