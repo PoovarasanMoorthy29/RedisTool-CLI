@@ -188,4 +188,10 @@ RedisTool-CLI/
 └── logs/
     └── operations.jsonl             ← Event audit logs
 ```
+
 ---
+
+## 8. Troubleshooting
+
+For validation checks, common error messages (such as IP address conflicts or port conflicts), and instructions on how to fix them, refer to the [Troubleshooting Guide](file:///home/poovarasan/Desktop/RedisTool-CLI/TROUBLESHOOTING.md).
+

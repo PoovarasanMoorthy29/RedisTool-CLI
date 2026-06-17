@@ -35,26 +35,32 @@ SSH_KEY_DIR = os.path.join(INFRA_DIR, "ssh_keys")
 SSH_KEY = os.path.join(SSH_KEY_DIR, "id_rsa")
 OP_LOG_FILE = os.path.join(LOG_DIR, "operations.jsonl")
 
-NODES = {
-    "redis-node-1": "10.10.0.11",
-    "redis-node-2": "10.10.0.12",
-    "redis-node-3": "10.10.0.13",
-    "redis-node-4": "10.10.0.14",
-    "redis-node-5": "10.10.0.15",
-    "redis-node-6": "10.10.0.16",
-}
+def load_nodes_from_compose():
+    nodes_map = {}
+    ports_map = {}
+    compose_path = os.path.join(PROJECT_ROOT, "infra", "compose.yml")
+    if os.path.exists(compose_path):
+        with open(compose_path, "r") as f:
+            content = f.read()
+        node_indices = sorted(list(map(int, re.findall(r"redis-node-(\d+):", content))))
+        for idx in node_indices:
+            name = f"redis-node-{idx}"
+            ip = f"10.10.0.{10 + idx}"
+            nodes_map[name] = ip
+            ports_map[ip] = 2210 + idx
+    if not nodes_map:
+        for idx in range(1, 9):
+            name = f"redis-node-{idx}"
+            ip = f"10.10.0.{10 + idx}"
+            nodes_map[name] = ip
+            ports_map[ip] = 2210 + idx
+    return nodes_map, ports_map
+
+NODES, SSH_PORTS = load_nodes_from_compose()
 BASE_NODE_NAMES = [f"redis-node-{i}" for i in range(1, 7)]
-SCALE_NODE_NAMES = []
+SCALE_NODE_NAMES = [name for name in NODES if name not in BASE_NODE_NAMES]
 BASE_IPS = [NODES[name] for name in BASE_NODE_NAMES]
-SCALE_IPS = []
-SSH_PORTS = {
-    "10.10.0.11": 2211,
-    "10.10.0.12": 2212,
-    "10.10.0.13": 2213,
-    "10.10.0.14": 2214,
-    "10.10.0.15": 2215,
-    "10.10.0.16": 2216,
-}
+SCALE_IPS = [NODES[name] for name in SCALE_NODE_NAMES]
 ALL_IPS = list(NODES.values())
 IP_TO_NAME = {v: k for k, v in NODES.items()}
 
@@ -158,7 +164,9 @@ def run_live(cmd, cwd=None, check=True):
 
 def ssh_cmd(ip, remote_cmd):
     """Run a command on a container node via SSH."""
-    port = SSH_PORTS.get(ip, 22)
+    if ip not in SSH_PORTS:
+        return "", 1
+    port = SSH_PORTS[ip]
     full = (
         f"ssh -i {SSH_KEY} -p {port} -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 "
@@ -391,7 +399,7 @@ def infra_down():
     # Clean up containers from BOTH engines to avoid port conflicts
     for engine in ("podman", "docker"):
         if shutil.which(engine):
-            for i in range(1, 9):
+            for i in range(1, 33):
                 name = f"redis-node-{i}"
                 run(f"{engine} stop {name}", check=False)
                 run(f"{engine} rm -f {name}", check=False)
@@ -631,18 +639,152 @@ def cmd_rollback(args):
     log_ok("Cluster state: OK")
 
 
+def add_nodes_to_config(count):
+    compose_path = os.path.join(PROJECT_ROOT, "infra", "compose.yml")
+    hosts_path = os.path.join(PROJECT_ROOT, "ansible", "inventory", "hosts.ini")
+    
+    with open(compose_path, "r") as f:
+        compose_content = f.read()
+        
+    current_indices = sorted(list(map(int, re.findall(r"redis-node-(\d+):", compose_content))))
+    max_idx = current_indices[-1] if current_indices else 6
+    
+    new_node_names = []
+    new_services = ""
+    new_volumes = ""
+    for i in range(1, count + 1):
+        idx = max_idx + i
+        name = f"redis-node-{idx}"
+        ip = f"10.10.0.{10 + idx}"
+        ssh_port = 2210 + idx
+        redis_port = 7000 + idx
+        bus_port = 17000 + idx
+        
+        new_services += f"""
+  {name}:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: {name}
+    hostname: {name}
+    networks:
+      redis-cluster-net:
+        ipv4_address: {ip}
+    ports:
+      - "{ssh_port}:22"
+      - "{redis_port}:6379"
+      - "{bus_port}:16379"
+    volumes:
+      - redis-data-{idx}:/data
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+"""
+        new_volumes += f"  redis-data-{idx}:\n"
+        new_node_names.append(name)
+        
+    networks_pos = compose_content.find("\nnetworks:")
+    if networks_pos == -1:
+        networks_pos = compose_content.find("networks:")
+        
+    if networks_pos != -1:
+        compose_content = compose_content[:networks_pos] + new_services + "\n" + compose_content[networks_pos:]
+        
+    compose_content = compose_content.rstrip() + "\n" + new_volumes
+        
+    with open(compose_path, "w") as f:
+        f.write(compose_content)
+        
+    with open(hosts_path, "r") as f:
+        hosts_content = f.read()
+        
+    scale_nodes_block = "\n[redis_scale_nodes]\n"
+    for i in range(1, count + 1):
+        idx = max_idx + i
+        name = f"redis-node-{idx}"
+        ip = f"10.10.0.{10 + idx}"
+        ssh_port = 2210 + idx
+        redis_port = 7000 + idx
+        bus_port = 17000 + idx
+        
+        scale_nodes_block += f"{name} ansible_host=127.0.0.1 ansible_port={ssh_port} redis_node_ip={ip} redis_port=6379 cluster_bus_port=16379 node_id={idx}\n"
+        
+    if "[redis_scale_nodes]" in hosts_content:
+        header_pos = hosts_content.find("[redis_scale_nodes]")
+        end_line_pos = hosts_content.find("\n", header_pos)
+        hosts_content = hosts_content[:end_line_pos + 1] + scale_nodes_block.replace("\n[redis_scale_nodes]\n", "") + hosts_content[end_line_pos + 1:]
+    else:
+        hosts_content += scale_nodes_block
+        if "redis_scale_nodes" not in hosts_content:
+            children_pos = hosts_content.find("[redis_all:children]")
+            if children_pos != -1:
+                end_line_pos = hosts_content.find("\n", children_pos)
+                hosts_content = hosts_content[:end_line_pos + 1] + "redis_scale_nodes\n" + hosts_content[end_line_pos + 1:]
+                
+    with open(hosts_path, "w") as f:
+        f.write(hosts_content)
+        
+    return new_node_names
+
+
+def remove_node_from_config(node_name):
+    m = re.match(r"redis-node-(\d+)", node_name)
+    if not m:
+        return
+    idx = int(m.group(1))
+    
+    compose_path = os.path.join(PROJECT_ROOT, "infra", "compose.yml")
+    hosts_path = os.path.join(PROJECT_ROOT, "ansible", "inventory", "hosts.ini")
+    
+    for engine in ("podman", "docker"):
+        if shutil.which(engine):
+            run(f"{engine} stop {node_name}", check=False)
+            run(f"{engine} rm -f {node_name}", check=False)
+            run(f"{engine} volume rm -f infra_redis-data-{idx}", check=False)
+            run(f"{engine} volume rm -f redis-data-{idx}", check=False)
+            
+    if os.path.exists(compose_path):
+        with open(compose_path, "r") as f:
+            content = f.read()
+        pattern = rf"\n  {node_name}:.*?(?=\n  redis-node-|\nnetworks:|\n\Z)"
+        content = re.sub(pattern, "", content, flags=re.DOTALL)
+        volume_pattern = rf"\n  redis-data-{idx}:"
+        content = re.sub(volume_pattern, "", content)
+        with open(compose_path, "w") as f:
+            f.write(content)
+            
+    if os.path.exists(hosts_path):
+        with open(hosts_path, "r") as f:
+            content = f.read()
+        host_pattern = rf"\n{node_name}\s+.*"
+        content = re.sub(host_pattern, "", content)
+        with open(hosts_path, "w") as f:
+            f.write(content)
+
+
 def cmd_scale(args):
+    global NODES, SSH_PORTS, SCALE_NODE_NAMES, BASE_NODE_NAMES, BASE_IPS, SCALE_IPS, ALL_IPS, IP_TO_NAME
     header("Scaling Redis Cluster")
     preflight(getattr(args, 'auto_install', False))
 
     if args.add_nodes:
-        if not SCALE_NODE_NAMES:
-            abort("Scaling nodes (node 7 and 8) are not defined/configured in composition configurations.")
-        if args.add_nodes != 2:
-            abort("Currently only supports adding exactly 2 nodes (1M + 1R)")
+        if args.add_nodes < 1:
+            abort("Number of nodes to add must be greater than 0.")
+            
+        log_step(f"Dynamically generating config definitions for {args.add_nodes} new nodes...")
+        new_node_names = add_nodes_to_config(args.add_nodes)
+        
+        NODES, SSH_PORTS = load_nodes_from_compose()
+        SCALE_NODE_NAMES = [name for name in NODES if name not in BASE_NODE_NAMES]
+        BASE_IPS = [NODES[name] for name in BASE_NODE_NAMES]
+        SCALE_IPS = [NODES[name] for name in SCALE_NODE_NAMES]
+        ALL_IPS = list(NODES.values())
+        IP_TO_NAME = {v: k for k, v in NODES.items()}
 
-        log_step("Starting and provisioning new nodes (node 7 and 8)...")
-        infra_up(SCALE_NODE_NAMES)
+        log_step(f"Building and starting containers: {', '.join(new_node_names)}...")
+        infra_up(new_node_names)
+        
         info = redis_cli(BASE_IPS[0], "INFO server")
         ver = next((l.split(":")[1].strip() for l in info.splitlines() if l.startswith("redis_version:")), "7.0.15")
 
@@ -651,22 +793,52 @@ def cmd_scale(args):
             "redis_version_override": ver
         })
 
-        log_step("Adding Node 7 as Master...")
-        ssh_cmd(BASE_IPS[0], "/opt/redis/bin/redis-cli --cluster add-node 10.10.0.17:6379 10.10.0.11:6379")
-        time.sleep(2)
+        # Pair up as many nodes as possible (2 at a time)
+        for i in range(0, len(new_node_names) - 1, 2):
+            m_name = new_node_names[i]
+            r_name = new_node_names[i+1]
+            m_ip = NODES[m_name]
+            r_ip = NODES[r_name]
+            
+            log_step(f"Joining {m_name} ({m_ip}:6379) to cluster as master...")
+            out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node {m_ip}:6379 {BASE_IPS[0]}:6379")
+            if rc != 0:
+                log_error(f"Join master command failed (rc={rc}): {out}")
+                abort(f"Failed to join {m_name} to cluster")
+            
+            log_step(f"Retrieving cluster node ID for {m_name}...")
+            m_node = None
+            for attempt in range(15):
+                nodes = get_cluster_nodes()
+                m_node = next((n for n in nodes if n["ip"] == m_ip), None)
+                if m_node:
+                    break
+                time.sleep(1)
+            else:
+                abort(f"Failed to find node ID for {m_name} in cluster")
+                
+            log_step(f"Joining {r_name} ({r_ip}:6379) to cluster as replica of {m_name} ({m_node['id']})...")
+            out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node {r_ip}:6379 {BASE_IPS[0]}:6379 --cluster-slave --cluster-master-id {m_node['id']}")
+            if rc != 0:
+                log_error(f"Join replica command failed (rc={rc}): {out}")
+                abort(f"Failed to join {r_name} as replica")
+            time.sleep(3)
 
-        log_step("Retrieving Node 7 ID...")
-        nodes = get_cluster_nodes()
-        n7 = next((n for n in nodes if n["ip"] == "10.10.0.17"), None)
-        if not n7:
-            abort("Node 7 failed to join cluster")
-
-        log_step("Adding Node 8 as Replica to Node 7...")
-        ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node 10.10.0.18:6379 10.10.0.11:6379 --cluster-slave --cluster-master-id {n7['id']}")
-        time.sleep(2)
+        # If there is a remaining odd node, join it as a master
+        if len(new_node_names) % 2 != 0:
+            m_name = new_node_names[-1]
+            m_ip = NODES[m_name]
+            log_step(f"Joining odd node {m_name} ({m_ip}:6379) to cluster as master...")
+            out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node {m_ip}:6379 {BASE_IPS[0]}:6379")
+            if rc != 0:
+                log_error(f"Join master command failed (rc={rc}): {out}")
+                abort(f"Failed to join {m_name} to cluster")
+            time.sleep(3)
 
         log_step("Rebalancing Cluster Slots...")
-        ssh_cmd(BASE_IPS[0], "/opt/redis/bin/redis-cli --cluster rebalance 10.10.0.11:6379 --cluster-use-empty-masters")
+        out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster rebalance {BASE_IPS[0]}:6379 --cluster-use-empty-masters")
+        if rc != 0:
+            log_warn(f"Rebalance command completed with warnings or error: {out}")
         log_ok("Scale out complete!")
 
     elif args.remove_node:
@@ -677,26 +849,15 @@ def cmd_scale(args):
         if not target:
             abort(f"Node {node_id} not found")
 
-        replica_id = None
-        if target["role"] == "master":
-            replica = next((n for n in nodes if n["role"] == "slave" and n["master_id"] == node_id), None)
-            if replica:
-                replica_id = replica["id"]
-                log_info(f"Associated replica for master {node_id} is {replica_id} ({replica['name']})")
-        else:
-            master_id = target["master_id"]
-            master = next((n for n in nodes if n["id"] == master_id), None)
-            if master:
-                log_info(f"Associated master for replica {node_id} is {master_id} ({master['name']})")
-                replica_id = node_id
-                node_id = master_id
-                target = master
+        target_name = target["name"]
+        target_ip = target["ip"]
+        target_role = target["role"]
 
-        if target["role"] == "master":
+        if target_role == "master":
             log_step("Resharding slots away from master...")
             slots = 0
             try:
-                raw_nodes = redis_cli(target["ip"], "cluster nodes")
+                raw_nodes = redis_cli(target_ip, "cluster nodes")
                 for line in raw_nodes.splitlines():
                     if node_id in line and "master" in line:
                         parts = line.split()
@@ -714,18 +875,29 @@ def cmd_scale(args):
                 other_master = next((n for n in nodes if n["role"] == "master" and n["id"] != node_id), None)
                 if other_master:
                     log_info(f"Moving {slots} slots to master {other_master['id']} ({other_master['name']})")
-                    ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster reshard 10.10.0.11:6379 --cluster-from {node_id} --cluster-to {other_master['id']} --cluster-slots {slots} --cluster-yes")
+                    out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster reshard {BASE_IPS[0]}:6379 --cluster-from {node_id} --cluster-to {other_master['id']} --cluster-slots {slots} --cluster-yes")
+                    if rc != 0:
+                        log_error(f"Reshard command failed: {out}")
+                        abort("Failed to reshard slots away from master node.")
                     time.sleep(5)
                 else:
                     abort("No other master found to receive slots!")
 
-        if replica_id:
-            log_step(f"Deleting replica node {replica_id} from cluster...")
-            ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster del-node 10.10.0.11:6379 {replica_id}")
-            time.sleep(2)
-
-        log_step(f"Deleting master node {node_id} from cluster...")
-        ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster del-node 10.10.0.11:6379 {node_id}")
+        log_step(f"Deleting node {node_id} from cluster...")
+        ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster del-node {BASE_IPS[0]}:6379 {node_id}")
+        time.sleep(2)
+        
+        if target_name:
+            log_step(f"Cleaning up container and config for {target_name}...")
+            remove_node_from_config(target_name)
+            
+        NODES, SSH_PORTS = load_nodes_from_compose()
+        SCALE_NODE_NAMES = [name for name in NODES if name not in BASE_NODE_NAMES]
+        BASE_IPS = [NODES[name] for name in BASE_NODE_NAMES]
+        SCALE_IPS = [NODES[name] for name in SCALE_NODE_NAMES]
+        ALL_IPS = list(NODES.values())
+        IP_TO_NAME = {v: k for k, v in NODES.items()}
+        
         log_ok("Scale in complete!")
     else:
         abort("Must specify --add-nodes or --remove-node")
