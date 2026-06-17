@@ -93,7 +93,8 @@
   shell: |
     cd /tmp/redis-build/redis-{{ redis_version }}
     make distclean || true
-    make -j$(nproc) BUILD_TLS=no
+    make -j2 BUILD_TLS=no
+
   args:
     creates: "/tmp/redis-build/redis-{{ redis_version }}/src/redis-server"
   when: redis_needs_install | bool

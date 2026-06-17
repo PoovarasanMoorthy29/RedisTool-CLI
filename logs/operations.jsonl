@@ -1707,3 +1707,38 @@
 {"timestamp": "2026-06-17T10:07:21.361692Z", "command": "verify", "action": "All checks passed!", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-17T10:30:28.798983Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
 {"timestamp": "2026-06-17T10:30:29.496389Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:31:46.997625Z", "command": "provision", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:31:47.508656Z", "command": "provision", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:31:47.509068Z", "command": "provision", "action": "Checking if cluster is already provisioned...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:31:47.523872Z", "command": "provision", "action": "Cleaning up any previous infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:31:47.524316Z", "command": "provision", "action": "Tearing down infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:32:04.881839Z", "command": "provision", "action": "Infrastructure destroyed", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:04.882088Z", "command": "provision", "action": "Bringing up 6-node container infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:32:04.882372Z", "command": "provision", "action": "SSH keypair exists", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:20.500823Z", "command": "provision", "action": "Waiting for SSH on all nodes...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:32:20.861930Z", "command": "provision", "action": "SSH ready: 10.10.0.11", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:21.216806Z", "command": "provision", "action": "SSH ready: 10.10.0.12", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:21.575075Z", "command": "provision", "action": "SSH ready: 10.10.0.13", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:21.891291Z", "command": "provision", "action": "SSH ready: 10.10.0.14", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:22.234462Z", "command": "provision", "action": "SSH ready: 10.10.0.15", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:22.600988Z", "command": "provision", "action": "SSH ready: 10.10.0.16", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:32:22.601273Z", "command": "provision", "action": "Installing Redis 7.0.15 on all nodes...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:38:11.171935Z", "command": "provision", "action": "Command failed (rc=4): ANSIBLE_CONFIG=/home/poovarasan/Desktop/RedisTool-CLI/ansible.cfg ansible-playbook -i /home/poovarasan/Desktop/RedisTool-CLI/ansible/inventory/hosts.ini /home/poovarasan/Desktop/RedisTool-CLI/ansible/playbooks/provision.yml --private-key=/home/poovarasan/Desktop/RedisTool-CLI/infra/ssh_keys/id_rsa -e \"redis_version_override=7.0.15\" -e \"masters_count_override=3\" -e \"replicas_per_master_override=1\"", "outcome": "error", "details": {}}
+{"timestamp": "2026-06-17T10:45:34.290465Z", "command": "status", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:45:34.965489Z", "command": "status", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:45:47.994822Z", "command": "provision", "action": "Podman 4.9.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:45:48.489169Z", "command": "provision", "action": "Ansible 2.16.3 found", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:45:48.489709Z", "command": "provision", "action": "Checking if cluster is already provisioned...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:45:48.509925Z", "command": "provision", "action": "Cleaning up any previous infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:45:48.510238Z", "command": "provision", "action": "Tearing down infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:46:06.709471Z", "command": "provision", "action": "Infrastructure destroyed", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:06.709910Z", "command": "provision", "action": "Bringing up 6-node container infrastructure...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:46:06.710142Z", "command": "provision", "action": "SSH keypair exists", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:23.119593Z", "command": "provision", "action": "Waiting for SSH on all nodes...", "outcome": "started", "details": {}}
+{"timestamp": "2026-06-17T10:46:23.484380Z", "command": "provision", "action": "SSH ready: 10.10.0.11", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:23.816717Z", "command": "provision", "action": "SSH ready: 10.10.0.12", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:24.157573Z", "command": "provision", "action": "SSH ready: 10.10.0.13", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:24.487742Z", "command": "provision", "action": "SSH ready: 10.10.0.14", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:24.855966Z", "command": "provision", "action": "SSH ready: 10.10.0.15", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:25.193440Z", "command": "provision", "action": "SSH ready: 10.10.0.16", "outcome": "success", "details": {}}
+{"timestamp": "2026-06-17T10:46:25.193825Z", "command": "provision", "action": "Installing Redis 7.0.15 on all nodes...", "outcome": "started", "details": {}}
