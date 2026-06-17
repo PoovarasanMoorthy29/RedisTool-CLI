@@ -127,7 +127,7 @@
       loop:
         - "{{ redis_dir }}/dump.rdb"
         - "{{ redis_dir }}/appendonlydir"
-      when: needs_upgrade | bool
+      when: (needs_upgrade | bool) and (delete_db_data | default(false) | bool)
 
     - name: Start Redis with existing config
       shell: |

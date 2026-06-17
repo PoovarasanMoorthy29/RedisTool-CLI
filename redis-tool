@@ -195,13 +195,33 @@ PREFLIGHT_DONE = False
 def detect_container_engine(auto_install=False):
     global CONTAINER_ENGINE, COMPOSE_CMD
     version_str = ""
-    if shutil.which("podman"):
+    forced_engine = os.environ.get("CONTAINER_ENGINE")
+    
+    if forced_engine == "docker" and shutil.which("docker"):
+        CONTAINER_ENGINE = "docker"
+        r = subprocess.run("docker compose version", shell=True, capture_output=True)
+        if r.returncode == 0:
+            COMPOSE_CMD = "docker compose"
+        elif shutil.which("docker-compose"):
+            COMPOSE_CMD = "docker-compose"
+        else:
+            abort("Docker found but no compose plugin available")
+        r = subprocess.run("docker --version", shell=True, capture_output=True, text=True)
+        m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
+        version_str = m.group(1) if m else "found"
+    elif forced_engine == "podman" and shutil.which("podman"):
         CONTAINER_ENGINE = "podman"
         COMPOSE_CMD = "podman-compose" if shutil.which("podman-compose") else "podman compose"
         r = subprocess.run("podman --version", shell=True, capture_output=True, text=True)
         m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
         version_str = m.group(1) if m else "found"
-    elif shutil.which("docker"):
+    elif not forced_engine and shutil.which("podman"):
+        CONTAINER_ENGINE = "podman"
+        COMPOSE_CMD = "podman-compose" if shutil.which("podman-compose") else "podman compose"
+        r = subprocess.run("podman --version", shell=True, capture_output=True, text=True)
+        m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
+        version_str = m.group(1) if m else "found"
+    elif not forced_engine and shutil.which("docker"):
         CONTAINER_ENGINE = "docker"
         r = subprocess.run("docker compose version", shell=True, capture_output=True)
         if r.returncode == 0:
@@ -305,8 +325,23 @@ def ensure_required_subnet_available():
         return
 
     route_line = route.stdout.strip().splitlines()[0]
-    if "infra_redis-cluster-net" in route_line:
+    if "infra_redis-cluster-net" in route_line or "infra_redis_net" in route_line:
         return
+
+    if CONTAINER_ENGINE == "docker":
+        net_inspect = run("docker network inspect infra_redis-cluster-net", check=False)
+        if net_inspect.returncode == 0:
+            try:
+                import json
+                net_data = json.loads(net_inspect.stdout)
+                if net_data and isinstance(net_data, list):
+                    net_id = net_data[0].get("Id", "")
+                    if net_id:
+                        br_name = f"br-{net_id[:12]}"
+                        if br_name in route_line:
+                            return
+            except Exception:
+                pass
 
     iface = "unknown"
     match = re.search(r"\bdev\s+(\S+)", route_line)
@@ -316,7 +351,7 @@ def ensure_required_subnet_available():
     abort(
         "Required subnet 10.10.0.0/24 is already reserved on this host.\n"
         f"  Route: {route_line}\n"
-        "  This blocks Podman from creating infra_redis-cluster-net.\n"
+        f"  This blocks {CONTAINER_ENGINE.capitalize()} from creating infra_redis-cluster-net.\n"
         "  If this is a stale bridge from a previous run, remove it and retry:\n"
         f"    sudo ip link delete {iface}\n"
         "  Then run:\n"
@@ -817,11 +852,26 @@ def cmd_scale(args):
             else:
                 abort(f"Failed to find node ID for {m_name} in cluster")
                 
-            log_step(f"Joining {r_name} ({r_ip}:6379) to cluster as replica of {m_name} ({m_node['id']})...")
-            out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node {r_ip}:6379 {BASE_IPS[0]}:6379 --cluster-slave --cluster-master-id {m_node['id']}")
+            log_step(f"Joining {r_name} ({r_ip}:6379) to cluster...")
+            out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster add-node {r_ip}:6379 {BASE_IPS[0]}:6379")
             if rc != 0:
                 log_error(f"Join replica command failed (rc={rc}): {out}")
-                abort(f"Failed to join {r_name} as replica")
+                abort(f"Failed to join {r_name} to cluster")
+            
+            log_step(f"Waiting for {r_name} to learn about master {m_name} ({m_node['id']})...")
+            for attempt in range(15):
+                rep_nodes, r_rc = ssh_cmd(r_ip, "/opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 cluster nodes")
+                if r_rc == 0 and m_node["id"] in rep_nodes:
+                    break
+                time.sleep(1)
+            else:
+                abort(f"Replica {r_name} did not learn about master {m_name} in time")
+                
+            log_step(f"Configuring {r_name} as replica of {m_name}...")
+            out, rc = ssh_cmd(r_ip, f"/opt/redis/bin/redis-cli -h 127.0.0.1 -p 6379 CLUSTER REPLICATE {m_node['id']}")
+            if rc != 0:
+                log_error(f"CLUSTER REPLICATE failed on {r_name} (rc={rc}): {out}")
+                abort(f"Failed to configure {r_name} as replica of {m_name}")
             time.sleep(3)
 
         # If there is a remaining odd node, join it as a master
@@ -834,6 +884,9 @@ def cmd_scale(args):
                 log_error(f"Join master command failed (rc={rc}): {out}")
                 abort(f"Failed to join {m_name} to cluster")
             time.sleep(3)
+
+        log_step("Waiting for cluster topology to fully propagate...")
+        time.sleep(10)
 
         log_step("Rebalancing Cluster Slots...")
         out, rc = ssh_cmd(BASE_IPS[0], f"/opt/redis/bin/redis-cli --cluster rebalance {BASE_IPS[0]}:6379 --cluster-use-empty-masters")
@@ -986,8 +1039,29 @@ def cmd_upgrade(args, is_rollback=False):
         mname, mip, mid = master["name"], master["ip"], master["id"]
         rep = rep_for_master.get(mid)
         if not rep:
-            log_error(f"{op_name} failed: No replica found for master {mname} ({mip})")
-            sys.exit(1)
+            log_warn(f"Master {mname} ({mip}) has no replica. Upgrading directly (will cause brief slot downtime)...")
+            try:
+                run_playbook("upgrade.yml", extra_vars={
+                    "upgrade_node": mname, "target_version": target,
+                })
+                for _ in range(30):
+                    try:
+                        if redis_cli(mip, "ping").strip() == "PONG":
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(2)
+                else:
+                    log_error(f"{op_name} failed: Master {mname} did not respond after upgrade")
+                    sys.exit(1)
+                wait_cluster_ok(f"after direct upgrade of {mname}")
+                upgraded_count += 1
+                print(f"[{upgraded_count}/{total_nodes}] Upgraded master {mip} (direct) — cluster: ok")
+                log_ok(f"Master {mname} upgraded directly")
+                continue
+            except Exception as e:
+                log_error(f"{op_name} failed on master node {mname} ({mip}) during direct upgrade: {e}")
+                sys.exit(1)
 
         try:
             log_step(f"Failing over {mname} → promoting {rep['name']}...")
