@@ -67,29 +67,65 @@ To ensure secure passwordless connections, the tool's pre-flight check automatic
 
 ## 4. Quick Start
 
-Get your cluster up and running with a single sequence:
+First, ensure the CLI tool is executable:
+```bash
+chmod +x redis-tool
+```
+
+### Track 1: Running with Docker
+
+Use these commands sequentially to deploy, monitor, operate, and destroy your cluster on Docker:
 
 ```bash
-# Make the CLI tool executable
-chmod +x redis-tool
+# 1. Provision a 6-node cluster running Redis 7.0.15 on Docker
+# (Clears old state, starts Docker containers, compiles Redis, and forms cluster)
+CONTAINER_ENGINE=docker ./redis-tool provision
 
-# 1. Provision a 6-node cluster running Redis 7.0.15
-./redis-tool provision --version 7.0.15 --masters 3 --replicas-per-master 1
-
-# 2. Seed 1000 test keys
-./redis-tool data seed --keys 1000
-
-# 3. Verify data integrity
-./redis-tool data verify
-
-# 4. Check cluster status
+# 2. Check cluster status (auto-detects that Docker is running!)
 ./redis-tool status
 
-# 5. Perform a zero-downtime rolling upgrade to Redis 7.2.6
-./redis-tool upgrade --target-version 7.2.6 --strategy rolling
+# 3. Seed 1000 test keys
+./redis-tool data seed --keys 1000
 
-# 6. Run full post-upgrade cluster verification
-./redis-tool verify --full
+# 4. Verify data integrity
+./redis-tool data verify
+
+# 5. Scale the cluster out (Adds 2 nodes: 1 master + 1 replica)
+./redis-tool scale --add-nodes 2
+
+# 6. Perform a zero-downtime rolling upgrade to Redis 7.2.4
+./redis-tool upgrade --target-version 7.2.4
+
+# 7. Clean up and tear down the infrastructure (clears both engines)
+./redis-tool infra down
+```
+
+### Track 2: Running with Podman
+
+Use these commands sequentially to deploy, monitor, operate, and destroy your cluster on Podman:
+
+```bash
+# 1. Provision a 6-node cluster running Redis 7.0.15 on Podman
+# (Clears old state, starts Podman containers, compiles Redis, and forms cluster)
+CONTAINER_ENGINE=podman ./redis-tool provision
+
+# 2. Check cluster status (auto-detects that Podman is running!)
+./redis-tool status
+
+# 3. Seed 1000 test keys
+./redis-tool data seed --keys 1000
+
+# 4. Verify data integrity
+./redis-tool data verify
+
+# 5. Scale the cluster out (Adds 2 nodes: 1 master + 1 replica)
+./redis-tool scale --add-nodes 2
+
+# 6. Perform a zero-downtime rolling upgrade to Redis 7.2.4
+./redis-tool upgrade --target-version 7.2.4
+
+# 7. Clean up and tear down the infrastructure (clears both engines)
+./redis-tool infra down
 ```
 
 ---

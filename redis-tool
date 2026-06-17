@@ -197,7 +197,21 @@ def detect_container_engine(auto_install=False):
     version_str = ""
     forced_engine = os.environ.get("CONTAINER_ENGINE")
     
-    if forced_engine == "docker" and shutil.which("docker"):
+    # Try to dynamically detect which engine currently has active project containers
+    active_engine = None
+    if not forced_engine:
+        if shutil.which("docker"):
+            r = subprocess.run("docker ps --filter name=redis-node-1 --format '{{.Names}}'", shell=True, capture_output=True, text=True)
+            if "redis-node-1" in r.stdout:
+                active_engine = "docker"
+        if not active_engine and shutil.which("podman"):
+            r = subprocess.run("podman ps --filter name=redis-node-1 --format '{{.Names}}'", shell=True, capture_output=True, text=True)
+            if "redis-node-1" in r.stdout:
+                active_engine = "podman"
+
+    engine_to_use = forced_engine or active_engine
+
+    if engine_to_use == "docker" and shutil.which("docker"):
         CONTAINER_ENGINE = "docker"
         r = subprocess.run("docker compose version", shell=True, capture_output=True)
         if r.returncode == 0:
@@ -209,19 +223,19 @@ def detect_container_engine(auto_install=False):
         r = subprocess.run("docker --version", shell=True, capture_output=True, text=True)
         m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
         version_str = m.group(1) if m else "found"
-    elif forced_engine == "podman" and shutil.which("podman"):
+    elif engine_to_use == "podman" and shutil.which("podman"):
         CONTAINER_ENGINE = "podman"
         COMPOSE_CMD = "podman-compose" if shutil.which("podman-compose") else "podman compose"
         r = subprocess.run("podman --version", shell=True, capture_output=True, text=True)
         m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
         version_str = m.group(1) if m else "found"
-    elif not forced_engine and shutil.which("podman"):
+    elif not engine_to_use and shutil.which("podman"):
         CONTAINER_ENGINE = "podman"
         COMPOSE_CMD = "podman-compose" if shutil.which("podman-compose") else "podman compose"
         r = subprocess.run("podman --version", shell=True, capture_output=True, text=True)
         m = re.search(r"(\d+\.\d+\.\d+)", r.stdout)
         version_str = m.group(1) if m else "found"
-    elif not forced_engine and shutil.which("docker"):
+    elif not engine_to_use and shutil.which("docker"):
         CONTAINER_ENGINE = "docker"
         r = subprocess.run("docker compose version", shell=True, capture_output=True)
         if r.returncode == 0:
@@ -359,6 +373,28 @@ def ensure_required_subnet_available():
     )
 
 
+def cleanup_opposite_engine():
+    """Remove conflicting containers and networks on the opposite engine to prevent port/subnet conflicts."""
+    opposite_engine = "docker" if CONTAINER_ENGINE == "podman" else "podman"
+    if not shutil.which(opposite_engine):
+        return
+
+    # 1. Stop and remove containers on opposite engine
+    for name in NODES.keys():
+        inspect = run(f"{opposite_engine} container inspect {name}", check=False)
+        if inspect.returncode == 0:
+            log_warn(f"Removing conflicting container {name} on opposite engine ({opposite_engine})")
+            run(f"{opposite_engine} stop {name}", check=False)
+            run(f"{opposite_engine} rm -f {name}", check=False)
+
+    # 2. Remove networks on opposite engine to release subnet routes
+    for net in ("infra_redis-cluster-net", "infra_redis_net"):
+        inspect_net = run(f"{opposite_engine} network inspect {net}", check=False)
+        if inspect_net.returncode == 0:
+            log_warn(f"Removing conflicting network {net} on opposite engine ({opposite_engine})")
+            run(f"{opposite_engine} network rm {net}", check=False)
+
+
 def cleanup_stale_project_containers(node_names):
     """Remove stopped/partial containers from prior failed compose runs."""
     for name in node_names:
@@ -410,6 +446,7 @@ def infra_up(node_names=None):
     else:
         log_step(f"Bringing up container infrastructure: {', '.join(node_names)}...")
     ensure_ssh_keys()
+    cleanup_opposite_engine()
     ensure_compose_network()
     ensure_required_subnet_available()
     cleanup_stale_project_containers(node_names)
@@ -448,7 +485,7 @@ def infra_down():
 def run_playbook(playbook, extra_vars=None, live=True):
     """Run an Ansible playbook. Returns CompletedProcess if live=False."""
     cmd = (
-        f"ANSIBLE_CONFIG={ANSIBLE_DIR}/ansible.cfg "
+        f"ANSIBLE_CONFIG={PROJECT_ROOT}/ansible.cfg "
         f"ansible-playbook -i {ANSIBLE_DIR}/inventory/hosts.ini "
         f"{ANSIBLE_DIR}/playbooks/{playbook} "
         f"--private-key={SSH_KEY}"
@@ -1210,6 +1247,11 @@ def cmd_infra_down(args):
     infra_down()
 
 
+def cmd_infra_cleanup_opposite(args):
+    detect_container_engine()
+    cleanup_opposite_engine()
+
+
 BANNER = """
   ╔══════════════════════════════════════════════════════╗
   ║          redis-tool · Cluster Lifecycle CLI          ║
@@ -1268,6 +1310,8 @@ def main():
     p.set_defaults(func=cmd_infra_up)
     p = isub.add_parser("down", help="Tear down containers")
     p.set_defaults(func=cmd_infra_down)
+    p = isub.add_parser("cleanup-opposite", help="Clean up opposite engine conflicts")
+    p.set_defaults(func=cmd_infra_cleanup_opposite)
 
     args = parser.parse_args()
 
